@@ -35,3 +35,31 @@ func aaaaNotWorking(domain, ipv6Address string, err error) Problem {
 		Detail: err.Error(),
 	}
 }
+
+func dnsLookupFailed(name, rrType string, err error) Problem {
+	return Problem{
+		Name:        "DNSLookupFailed",
+		Explanation: fmt.Sprintf(`A fatal issue occured during the DNS lookup process for %s/%s.`, name, rrType),
+		Detail:      err.Error(),
+	}
+}
+
+func noRecords(name, rrSummary string) Problem {
+	return Problem{
+		Name: "NoRecords",
+		Explanation: fmt.Sprintf(`No valid A or AAAA records could be ultimately resolved for %s (including indirection via CNAME). `+
+			`This means that Let's Encrypt would not be able to to connect to your domain to perform HTTP validation, since `+
+			`it would not know where to connect to.`, name),
+		Detail: rrSummary,
+	}
+}
+
+func reservedAddress(name, address string) Problem {
+	return Problem{
+		Name: "ReservedAddress",
+		Explanation: fmt.Sprintf(`An IANA/IETF-reserved address was found for %s. Let's Encrypt will always fail HTTP validation `+
+			`for any domain that is pointing to an address that is not routable on the internet. You should either remove this address `+
+			`or use the DNS validation method instead.`, name),
+		Detail: address,
+	}
+}
