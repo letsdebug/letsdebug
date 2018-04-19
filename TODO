@@ -1,0 +1,11 @@
+- libunbound: Configure ub context for DNS-strict configuration, mixed-case, max response size, etc
+- Checkers to add:
+  - CAA
+  - 10 second deadline
+  - Rate Limit is exceeded (use crt.sh public postgres interface)
+  - Bad redirect (non-acceptable port)
+  - Bad redirect (missing trailing slash on a 301 causing example.com.well-known/acme-challenge)
+  - Cloudflare
+  - Listening on 443 with HTTP
+  - Possible missing exclusion for /.well-known/acme-challenge in webserver based on sniffing
+  - all other ideas from https://community.letsencrypt.org/t/creating-a-webservice-for-analysis-of-common-problems/45836/2
