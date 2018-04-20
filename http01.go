@@ -16,7 +16,7 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 		return nil, errNotApplicable
 	}
 
-	probs := []Problem{}
+	var probs []Problem
 
 	_, err := ctx.Lookup(domain, dns.TypeAAAA)
 	if err != nil {

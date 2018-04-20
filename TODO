@@ -1,5 +1,5 @@
 - Checkers to add:
-  - CAA
+  - CAA (added, but needs review)
   - 10 second deadline
   - Rate Limit is exceeded (use crt.sh public postgres interface)
   - Bad redirect (non-acceptable port)
