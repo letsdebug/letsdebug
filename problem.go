@@ -27,6 +27,10 @@ func (p Problem) String() string {
 	return fmt.Sprintf("[%s] %s: %s", p.Name, p.Explanation, p.Detail)
 }
 
+func (p Problem) IsZero() bool {
+	return p.Name == ""
+}
+
 func internalProblem(message string, level SeverityLevel) Problem {
 	return Problem{
 		Name:        "InternalProblem",

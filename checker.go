@@ -23,8 +23,8 @@ var (
 func init() {
 	checkers = []checker{
 		tlssni0102Checker{},
-		reservedAddressChecker{},
-		aaaaInaccessibilityChecker{},
+		dnsAChecker{},
+		httpAccessibilityChecker{},
 	}
 }
 

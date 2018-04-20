@@ -7,38 +7,47 @@ import (
 	"github.com/miekg/dns"
 )
 
-// aaaaInaccessibilityChecker checks whether a domain is advertising AAAA records
-// that are not accessible over HTTP/port 80.
-type aaaaInaccessibilityChecker struct {
-}
+// dnsAChecker checks if there are any issues in Unbound looking up the A and
+// AAAA records for a domain (such as DNSSEC issues or dead nameservers)
+type dnsAChecker struct{}
 
-func aaaaNotWorking(domain, ipv6Address string, err error) Problem {
-	return Problem{
-		Name: "AAAANotWorking",
-		Explanation: fmt.Sprintf(`%s has an AAAA (IPv6) record (%s) but it is not responding to HTTP requests over port 80. `+
-			`This is a problem because Let's Encrypt will prefer to use AAAA records, if present, and will not fall back to IPv4 records. `+
-			`You should either repair the domain's IPv6 connectivity, or remove its AAAA record.`,
-			domain, ipv6Address),
-		Detail:   err.Error(),
-		Severity: SeverityError,
+func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if method != HTTP01 {
+		return nil, errNotApplicable
 	}
+
+	probs := []Problem{}
+
+	_, err := ctx.Lookup(domain, dns.TypeAAAA)
+	if err != nil {
+		probs = append(probs, dnsLookupFailed(domain, "AAAA", err))
+	}
+
+	_, err = ctx.Lookup(domain, dns.TypeA)
+	if err != nil {
+		probs = append(probs, dnsLookupFailed(domain, "A", err))
+	}
+
+	return probs, nil
 }
 
-func (c aaaaInaccessibilityChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+// httpAccessibilityChecker checks whether an HTTP ACME validation request
+// would lead to any issues such as:
+// - Bad redireects
+// - IPs not listening on port 80
+type httpAccessibilityChecker struct {
+}
+
+func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	if method != HTTP01 {
 		return nil, errNotApplicable
 	}
 
 	var probs []Problem
 
-	rrs, err := ctx.Lookup(domain, dns.TypeAAAA)
-	if err != nil {
-		probs = append(probs, dnsLookupFailed(domain, "AAAA", err))
-		return probs, nil
-	}
-
 	var ips []net.IP
 
+	rrs, _ := ctx.Lookup(domain, dns.TypeAAAA)
 	for _, rr := range rrs {
 		aaaa, ok := rr.(*dns.AAAA)
 		if !ok {
@@ -46,24 +55,30 @@ func (c aaaaInaccessibilityChecker) Check(ctx *scanContext, domain string, metho
 		}
 		ips = append(ips, aaaa.AAAA)
 	}
-
-	for _, ip := range ips {
-		// Reserved addresses are handled by reservedAddressChecker
-		// so we ignore them here
-		if isAddressReserved(ip) {
+	rrs, _ = ctx.Lookup(domain, dns.TypeA)
+	for _, rr := range rrs {
+		a, ok := rr.(*dns.A)
+		if !ok {
 			continue
 		}
-		if err := checkHTTP(domain, ip); err != nil {
-			probs = append(probs, aaaaNotWorking(domain, ip.String(), err))
+		ips = append(ips, a.A)
+	}
+
+	if len(ips) == 0 {
+		probs = append(probs, noRecords(domain, "No A or AAAA records found."))
+	}
+
+	for _, ip := range ips {
+		if isAddressReserved(ip) {
+			probs = append(probs, reservedAddress(domain, ip.String()))
+			continue
+		}
+		if prob := checkHTTP(domain, ip); !prob.IsZero() {
+			probs = append(probs, prob)
 		}
 	}
 
 	return probs, nil
-}
-
-// reservedAddressChecker checks whether a domain has any IANA-reserved addresses.
-// It also checks if no A or AAAA record can be found for the domain.
-type reservedAddressChecker struct {
 }
 
 func noRecords(name, rrSummary string) Problem {
@@ -86,51 +101,4 @@ func reservedAddress(name, address string) Problem {
 		Detail:   address,
 		Severity: SeverityError,
 	}
-}
-
-func (c reservedAddressChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
-	if method != HTTP01 {
-		return nil, errNotApplicable
-	}
-
-	var probs []Problem
-	var recordCount int
-
-	aRRs, err := ctx.Lookup(domain, dns.TypeA)
-	if err != nil {
-		probs = append(probs, dnsLookupFailed(domain, "A", err))
-	} else {
-		for _, rr := range aRRs {
-			a, ok := rr.(*dns.A)
-			if !ok {
-				continue
-			}
-			recordCount++
-			if isAddressReserved(a.A) {
-				probs = append(probs, reservedAddress(domain, a.A.String()))
-			}
-		}
-	}
-
-	aaaaRRs, err := ctx.Lookup(domain, dns.TypeAAAA)
-	if err != nil {
-		probs = append(probs, dnsLookupFailed(domain, "AAAA", err))
-	} else {
-		for _, rr := range aaaaRRs {
-			aaaa, ok := rr.(*dns.AAAA)
-			if !ok {
-				continue
-			}
-			recordCount++
-			if isAddressReserved(aaaa.AAAA) {
-				probs = append(probs, reservedAddress(domain, aaaa.AAAA.String()))
-			}
-		}
-	}
-
-	if recordCount == 0 {
-		probs = append(probs, noRecords(domain, fmt.Sprintf("A: %v, AAAA: %v", aRRs, aaaaRRs)))
-	}
-
-	return probs, nil
 }
