@@ -21,10 +21,11 @@ var (
 )
 
 func init() {
-	checkers = []checker{}
-	checkers = append(checkers, tlssni0102Checker{})
-	checkers = append(checkers, reservedAddressChecker{})
-	checkers = append(checkers, aaaaInaccessibilityChecker{})
+	checkers = []checker{
+		tlssni0102Checker{},
+		reservedAddressChecker{},
+		aaaaInaccessibilityChecker{},
+	}
 }
 
 type checker interface {

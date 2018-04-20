@@ -1,4 +1,3 @@
-- libunbound: Configure ub context for DNS-strict configuration, mixed-case, max response size, etc
 - Checkers to add:
   - CAA
   - 10 second deadline
