@@ -15,10 +15,22 @@ func Check(domain string, method ValidationMethod) ([]Problem, error) {
 
 	domain = normalizeFqdn(domain)
 
-	probs := []Problem{}
+	var probs []Problem
 	for _, checker := range checkers {
 		if checkerProbs, err := checker.Check(ctx, domain, method); err == nil {
 			probs = append(probs, checkerProbs...)
+
+			// dont continue checking when a fatal error occurs
+			hasFatal := false
+			for _, p := range probs {
+				if p.Priority == PriorityFatal {
+					hasFatal = true
+					break
+				}
+			}
+			if hasFatal {
+				break
+			}
 		} else if err != errNotApplicable {
 			return nil, err
 		}

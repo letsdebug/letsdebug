@@ -17,7 +17,7 @@ func main() {
 	flag.StringVar(&validationMethod, "method", "http-01", "Which validation method to assume (http-01,dns-01)")
 	flag.Parse()
 
-	if validationMethod != string(letsdebug.HTTP01) {
+	if !letsdebug.ValidMethods[letsdebug.ValidationMethod(validationMethod)] {
 		fmt.Fprintf(os.Stderr, "%s is not a supported ACME validation method\n", validationMethod)
 		flag.Usage()
 		os.Exit(1)
@@ -35,7 +35,7 @@ func main() {
 	}
 
 	for _, prob := range probs {
-		fmt.Printf("%s\nPROBLEM:\n  %s\n\nEXPLANATION:\n  %s\n\nDETAIL:\n  %s\n%s\n",
-			strings.Repeat("-", 50), prob.Name, prob.Explanation, prob.Detail, strings.Repeat("-", 50))
+		fmt.Printf("%s\nPROBLEM:\n  %s\n\nPRIORITY:\n  %s\n\nEXPLANATION:\n  %s\n\nDETAIL:\n  %s\n%s\n",
+			strings.Repeat("-", 50), prob.Name, prob.Priority, prob.Explanation, prob.Detail, strings.Repeat("-", 50))
 	}
 }
