@@ -41,6 +41,10 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 		return nil, err
 	}
 
+	if result.Bogus {
+		return nil, fmt.Errorf("Response for %s was bogus: %v", name, result.WhyBogus)
+	}
+
 	return result.Rr, nil
 }
 

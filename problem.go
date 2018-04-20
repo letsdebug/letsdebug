@@ -41,6 +41,6 @@ func dnsLookupFailed(name, rrType string, err error) Problem {
 		Name:        "DNSLookupFailed",
 		Explanation: fmt.Sprintf(`A fatal issue occured during the DNS lookup process for %s/%s.`, name, rrType),
 		Detail:      err.Error(),
-		Severity:    SeverityError,
+		Severity:    SeverityFatal,
 	}
 }
