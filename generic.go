@@ -111,7 +111,7 @@ func collateRecords(records []*dns.CAA) string {
 func caaCriticalUnknown(domain string, wildcard bool, records []*dns.CAA) Problem {
 	return Problem{
 		Name: "CaaCriticalUnknown",
-		Explanation: fmt.Sprintf(`CAA record(s) exist on domain %s (wildcard=%t) that are marked as critical but are unknown to Let's Encrypt. `+
+		Explanation: fmt.Sprintf(`CAA record(s) exist on %s (wildcard=%t) that are marked as critical but are unknown to Let's Encrypt. `+
 			`These record(s) as shown in the detail must be removed, or marked as non-critical, before a certificate can be issued by the Let's Encrypt CA.`, domain, wildcard),
 		Detail:   collateRecords(records),
 		Severity: SeverityFatal,
@@ -121,8 +121,8 @@ func caaCriticalUnknown(domain string, wildcard bool, records []*dns.CAA) Proble
 func caaIssuanceNotAllowed(domain string, wildcard bool, records []*dns.CAA) Problem {
 	return Problem{
 		Name: "CaaIssuanceNotAllowed",
-		Explanation: fmt.Sprintf(`No CAA record on domain %s (wildcard=%t) contains the issuance domain "letsencrypt.org". `+
-			`These records will either need to be removed or ammended to before issuance will be allowed. `+
+		Explanation: fmt.Sprintf(`No CAA record on %s (wildcard=%t) contains the issuance domain "letsencrypt.org". `+
+			`You must either add an additional record to include "letsencrypt.org" or remove every existing CAA record. `+
 			`A list of the CAA records are provided in the details.`, domain, wildcard),
 		Detail:   collateRecords(records),
 		Severity: SeverityFatal,
