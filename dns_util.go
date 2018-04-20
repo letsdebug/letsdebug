@@ -77,7 +77,6 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		Val string
 	}{
 		{"verbosity:", "0"},
-		{"num-threads:", "1"},
 		{"so-reuseport:", "yes"},
 		{"use-syslog:", "no"},
 		{"do-ip4:", "yes"},
@@ -87,7 +86,6 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"tcp-upstream:", "no"},
 		{"harden-glue:", "yes"},
 		{"harden-dnssec-stripped:", "yes"},
-		{"use-caps-for-id:", "yes"},
 		{"cache-min-ttl:", "0"},
 		{"cache-max-ttl:", "0"},
 		{"cache-max-negative-ttl:", "0"},
@@ -97,12 +95,18 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"do-not-query-localhost:", "yes"},
 		{"val-clean-additional:", "yes"},
 		{"harden-algo-downgrade:", "yes"},
+		// The colon is missing here because there's a parsing bug
+		// in Unbound in at least every version upto and including 1.7.0
+		// https://github.com/NLnetLabs/unbound/blob/f39e39ed4728ea7853f6fd3e59fc5397e92fb317/util/config_file.c#L512
+		// https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=4092
+		{"use-caps-for-id", "yes"},
 	}
 
 	for _, opt := range opts {
-		// no matter what, error always returns "syntax error" even when the option is successfully set
-		// eg try changing verbosity to 5 and watch stderr output
-		ub.SetOption(opt.Opt, opt.Val)
+		// Can't ignore these because we cant silently have policies being ignored
+		if err := ub.SetOption(opt.Opt, opt.Val); err != nil {
+			return fmt.Errorf("Failed to configure unbound with option %s %v", opt.Opt, err)
+		}
 	}
 
 	return ub.AddTa(`. 111013 IN DNSKEY 257 3 8 AwEAAagAIKlVZrpC6Ia7gEzahOR+9W29euxhJhVVLOyQbSEW0O8gcCjF FVQUTf6v58fLjwBd0YI0EzrAcQqBGCzh/RStIoO8g0NfnfL2MTJRkxoX bfDaUeVPQuYEhg37NZWAJQ9VnMVDxP/VHL496M/QZxkjf5/Efucp2gaD X6RS6CXpoY68LsvPVjR0ZSwzz1apAzvN9dlzEheX7ICJBBtuA6G3LQpz W5hOA2hzCTMjJPJ8LbqF6dsV6DoBQzgul0sGIcGOYl7OyQdXfZ57relS Qageu+ipAdTTJ25AsRTAoub8ONGcLmqrAmRLKBP1dfwhYB4N7knNnulq QxA+Uk1ihz0=
