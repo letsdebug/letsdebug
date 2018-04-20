@@ -2,37 +2,22 @@ package letsdebug
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
-	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/miekg/dns"
 	"github.com/miekg/unbound"
 )
 
 var (
-	reservedNets  []*net.IPNet
-	writeUbConfig sync.Once
+	reservedNets []*net.IPNet
 )
 
 func lookup(name string, rrType uint16) ([]dns.RR, error) {
-	ubConfigPath := filepath.Join(os.TempDir(), "letsdebug-unbound.conf")
-	writeUbConfig.Do(func() {
-		if err := ioutil.WriteFile(ubConfigPath, []byte(unboundConf), 0600); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to write Unbound config to disk: %v\n", err)
-		}
-		if err := ioutil.WriteFile(filepath.Join(os.TempDir(), "letsdebug_unbound_root.key"), []byte(unboundRootKey), 0600); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to write Unbound root key to disk: %v\n", err)
-		}
-	})
-
 	ub := unbound.New()
 	defer ub.Destroy()
 
-	if err := ub.Config(ubConfigPath); err != nil {
+	if err := setUnboundConfig(ub); err != nil {
 		return nil, fmt.Errorf("Failed to configure Unbound resolver: %v", err)
 	}
 
@@ -85,41 +70,42 @@ func init() {
 	}
 }
 
-var unboundConf = `
-server:
-	verbosity: 0
-	num-threads: 1
-	so-reuseport: yes
-	use-syslog: no
-	do-ip4: yes
-	do-ip6: yes
-	do-udp: yes
-	do-tcp: yes
-	tcp-upstream: no
-	harden-glue: yes
-	harden-dnssec-stripped: yes
-	use-caps-for-id: yes
-	cache-min-ttl: 0
-	cache-max-ttl: 0
-	cache-max-negative-ttl: 0
-	neg-cache-size: 0
-	prefetch: no
-	unwanted-reply-threshold: 10000
-	do-not-query-localhost: yes
-	val-clean-additional: yes
-	harden-algo-downgrade: yes
-	auto-trust-anchor-file: "` + filepath.Join(os.TempDir(), "letsdebug_unbound_root.key") + `"
-`
+func setUnboundConfig(ub *unbound.Unbound) error {
+	// options need the : in the option key according to docs
+	opts := []struct {
+		Opt string
+		Val string
+	}{
+		{"verbosity:", "0"},
+		{"num-threads:", "1"},
+		{"so-reuseport:", "yes"},
+		{"use-syslog:", "no"},
+		{"do-ip4:", "yes"},
+		{"do-ip6:", "yes"},
+		{"do-udp:", "yes"},
+		{"do-tcp:", "yes"},
+		{"tcp-upstream:", "no"},
+		{"harden-glue:", "yes"},
+		{"harden-dnssec-stripped:", "yes"},
+		{"use-caps-for-id:", "yes"},
+		{"cache-min-ttl:", "0"},
+		{"cache-max-ttl:", "0"},
+		{"cache-max-negative-ttl:", "0"},
+		{"neg-cache-size:", "0"},
+		{"prefetch:", "no"},
+		{"unwanted-reply-threshold:", "10000"},
+		{"do-not-query-localhost:", "yes"},
+		{"val-clean-additional:", "yes"},
+		{"harden-algo-downgrade:", "yes"},
+	}
 
-const unboundRootKey = `
-; autotrust trust anchor file
-;;id: . 1
-;;last_queried: 1500518597 ;;Wed Jul 19 19:43:17 2017
-;;last_success: 1500518597 ;;Wed Jul 19 19:43:17 2017
-;;next_probe_time: 1500522140 ;;Wed Jul 19 20:42:20 2017
-;;query_failed: 0
-;;query_interval: 3600
-;;retry_time: 3600
-.	172800	IN	DNSKEY	257 3 8 AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTOiW1vkIbzxeF3+/4RgWOq7HrxRixHlFlExOLAJr5emLvN7SWXgnLh4+B5xQlNVz8Og8kvArMtNROxVQuCaSnIDdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF0jLHwVN8efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7pr+eoZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLYA4/ilBmSVIzuDWfdRUfhHdY6+cn8HFRm+2hM8AnXGXws9555KrUB5qihylGa8subX2Nn6UwNR1AkUTV74bU= ;{id = 20326 (ksk), size = 2048b} ;;state=1 [ ADDPEND ] ;;count=250 ;;lastchange=1499776649 ;;Tue Jul 11 05:37:29 2017
-. 172800 IN DNSKEY 257 3 8 AwEAAagAIKlVZrpC6Ia7gEzahOR+9W29euxhJhVVLOyQbSEW0O8gcCjFFVQUTf6v58fLjwBd0YI0EzrAcQqBGCzh/RStIoO8g0NfnfL2MTJRkxoXbfDaUeVPQuYEhg37NZWAJQ9VnMVDxP/VHL496M/QZxkjf5/Efucp2gaDX6RS6CXpoY68LsvPVjR0ZSwzz1apAzvN9dlzEheX7ICJBBtuA6G3LQpzW5hOA2hzCTMjJPJ8LbqF6dsV6DoBQzgul0sGIcGOYl7OyQdXfZ57relSQageu+ipAdTTJ25AsRTAoub8ONGcLmqrAmRLKBP1dfwhYB4N7knNnulqQxA+Uk1ihz0= ;{id = 19036 (ksk), size = 2048b} ;;state=2 [ VALID ] ;;count=0 ;;lastchange=1404118431 ;;Mon Jun 30 01:53:51 2014
-`
+	for _, opt := range opts {
+		// no matter what, error always returns "syntax error" even when the option is successfully set
+		// eg try changing verbosity to 5 and watch stderr output
+		ub.SetOption(opt.Opt, opt.Val)
+	}
+
+	return ub.AddTa(`. 111013 IN DNSKEY 257 3 8 AwEAAagAIKlVZrpC6Ia7gEzahOR+9W29euxhJhVVLOyQbSEW0O8gcCjF FVQUTf6v58fLjwBd0YI0EzrAcQqBGCzh/RStIoO8g0NfnfL2MTJRkxoX bfDaUeVPQuYEhg37NZWAJQ9VnMVDxP/VHL496M/QZxkjf5/Efucp2gaD X6RS6CXpoY68LsvPVjR0ZSwzz1apAzvN9dlzEheX7ICJBBtuA6G3LQpz W5hOA2hzCTMjJPJ8LbqF6dsV6DoBQzgul0sGIcGOYl7OyQdXfZ57relS Qageu+ipAdTTJ25AsRTAoub8ONGcLmqrAmRLKBP1dfwhYB4N7knNnulq QxA+Uk1ihz0=
+. 111013 IN DNSKEY 256 3 8 AwEAAdU4aKlDgEpXWWpH5aXHJZI1Vm9Cm42mGAsqkz3akFctS6zsZHC3 pNNMug99fKa7OW+tRHIwZEc//mX8Jt6bcw5bPgRHG6u2eT8vUpbXDPVs 1ICGR6FhlwFWEOyxbIIiDfd7Eq6eALk5RNcauyE+/ZP+VdrhWZDeEWZR rPBLjByBWTHl+v/f+xvTJ3Stcq2tEqnzS2CCOr6RTJepprYhu+5Yl6aR ZmEVBK27WCW1Zrk1LekJvJXfcyKSKk19C5M5JWX58px6nB1IS0pMs6aC IK2yaQQVNUEg9XyQzBSv/rMxVNNy3VAqOjvh+OASpLMm4GECbSSe8jtj wG0I78sfMZc=
+. 111013 IN DNSKEY 257 3 8 AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTOiW1vkIbzxeF3 +/4RgWOq7HrxRixHlFlExOLAJr5emLvN7SWXgnLh4+B5xQlNVz8Og8kv ArMtNROxVQuCaSnIDdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF 0jLHwVN8efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7pr+e oZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLYA4/ilBmSVIzuDWfd RUfhHdY6+cn8HFRm+2hM8AnXGXws9555KrUB5qihylGa8subX2Nn6UwN R1AkUTV74bU=`)
+}
