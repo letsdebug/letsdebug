@@ -14,7 +14,7 @@ func validationDisabled(method ValidationMethod, url string) Problem {
 		Explanation: fmt.Sprintf(`The validation method provided (%s) has been disabled by Let's Encrypt. `+
 			`For more information, please visit the url in the details.`, method),
 		Detail:   url,
-		Priority: PriorityFatal,
+		Severity: SeverityFatal,
 	}
 }
 

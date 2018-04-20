@@ -23,7 +23,7 @@ func Check(domain string, method ValidationMethod) ([]Problem, error) {
 			// dont continue checking when a fatal error occurs
 			hasFatal := false
 			for _, p := range probs {
-				if p.Priority == PriorityFatal {
+				if p.Severity == SeverityFatal {
 					hasFatal = true
 					break
 				}

@@ -20,7 +20,7 @@ func aaaaNotWorking(domain, ipv6Address string, err error) Problem {
 			`You should either repair the domain's IPv6 connectivity, or remove its AAAA record.`,
 			domain, ipv6Address),
 		Detail:   err.Error(),
-		Priority: PriorityError,
+		Severity: SeverityError,
 	}
 }
 
@@ -73,7 +73,7 @@ func noRecords(name, rrSummary string) Problem {
 			`This means that Let's Encrypt would not be able to to connect to your domain to perform HTTP validation, since `+
 			`it would not know where to connect to.`, name),
 		Detail:   rrSummary,
-		Priority: PriorityError,
+		Severity: SeverityError,
 	}
 }
 
@@ -84,7 +84,7 @@ func reservedAddress(name, address string) Problem {
 			`for any domain that is pointing to an address that is not routable on the internet. You should either remove this address `+
 			`or use the DNS validation method instead.`, name),
 		Detail:   address,
-		Priority: PriorityError,
+		Severity: SeverityError,
 	}
 }
 

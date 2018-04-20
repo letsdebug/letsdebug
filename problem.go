@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// PriorityLevel represents the priority of a reported problem
-type PriorityLevel string
+// SeverityLevel represents the priority of a reported problem
+type SeverityLevel string
 
 // Problem represents an issue found by one of the checkers in this package.
 // Explanation is a human-readable explanation of the issue.
@@ -14,26 +14,25 @@ type Problem struct {
 	Name        string
 	Explanation string
 	Detail      string
-	Priority    PriorityLevel
+	Severity    SeverityLevel
 }
 
 const (
-	PriorityFatal   PriorityLevel = "PriorityFatal" // Represents a fatal error which will stop any further checks
-	PriorityError   PriorityLevel = "Error"
-	PriorityWarning PriorityLevel = "Warning"
-	PriorityInfo    PriorityLevel = "Info"
+	SeverityFatal   SeverityLevel = "Fatal" // Represents a fatal error which will stop any further checks
+	SeverityError   SeverityLevel = "Error"
+	SeverityWarning SeverityLevel = "Warning"
 )
 
 func (p Problem) String() string {
 	return fmt.Sprintf("[%s] %s: %s", p.Name, p.Explanation, p.Detail)
 }
 
-func internalProblem(message string, level PriorityLevel) Problem {
+func internalProblem(message string, level SeverityLevel) Problem {
 	return Problem{
 		Name:        "InternalProblem",
 		Explanation: fmt.Sprintf("An internal error occured while checking the domain"),
 		Detail:      message,
-		Priority:    level,
+		Severity:    level,
 	}
 }
 
@@ -42,6 +41,6 @@ func dnsLookupFailed(name, rrType string, err error) Problem {
 		Name:        "DNSLookupFailed",
 		Explanation: fmt.Sprintf(`A fatal issue occured during the DNS lookup process for %s/%s.`, name, rrType),
 		Detail:      err.Error(),
-		Priority:    PriorityFatal,
+		Severity:    SeverityFatal,
 	}
 }
