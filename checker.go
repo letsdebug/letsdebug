@@ -34,5 +34,6 @@ func init() {
 }
 
 type checker interface {
+	PreFlight(ctx *scanContext, domain string, method ValidationMethod) error
 	Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error)
 }

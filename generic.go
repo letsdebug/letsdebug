@@ -11,6 +11,10 @@ import (
 
 type caaChecker struct{}
 
+func (c caaChecker) PreFlight(ctx *scanContext, domain string, method ValidationMethod) error {
+	return nil
+}
+
 func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 

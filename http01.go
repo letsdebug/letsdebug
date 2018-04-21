@@ -11,11 +11,15 @@ import (
 // AAAA records for a domain (such as DNSSEC issues or dead nameservers)
 type dnsAChecker struct{}
 
-func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+func (c dnsAChecker) PreFlight(ctx *scanContext, domain string, method ValidationMethod) error {
 	if method != HTTP01 {
-		return nil, errNotApplicable
+		return errNotApplicable
 	}
 
+	return nil
+}
+
+func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 
 	_, err := ctx.Lookup(domain, dns.TypeAAAA)
@@ -37,11 +41,15 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 // - IPs not listening on port 80
 type httpAccessibilityChecker struct{}
 
-func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+func (c httpAccessibilityChecker) PreFlight(ctx *scanContext, domain string, method ValidationMethod) error {
 	if method != HTTP01 {
-		return nil, errNotApplicable
+		return errNotApplicable
 	}
 
+	return nil
+}
+
+func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 
 	var ips []net.IP
