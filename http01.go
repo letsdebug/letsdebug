@@ -35,8 +35,7 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 // would lead to any issues such as:
 // - Bad redireects
 // - IPs not listening on port 80
-type httpAccessibilityChecker struct {
-}
+type httpAccessibilityChecker struct{}
 
 func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	if method != HTTP01 {
