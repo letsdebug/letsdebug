@@ -5,17 +5,14 @@ import "fmt"
 // tlssni0102DisabledChecker checks whether the validation method is tls-sni-01/02 and returns a fatal error.
 type tlssni0102DisabledChecker struct{}
 
-func (c tlssni0102DisabledChecker) PreFlight(ctx *scanContext, domain string, method ValidationMethod) error {
+func (c tlssni0102DisabledChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	if method != TLSSNI01 && method != TLSSNI02 {
-		return errNotApplicable
+		return nil, errNotApplicable
 	}
 
-	return nil
-}
-
-func (c tlssni0102DisabledChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	prob := validationDisabled(method,
 		"https://community.letsencrypt.org/t/important-what-you-need-to-know-about-tls-sni-validation-issues/50811")
+
 	return []Problem{prob}, nil
 }
 
