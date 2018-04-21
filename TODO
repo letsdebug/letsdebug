@@ -1,6 +1,0 @@
-- Checkers to add:
-  - Rate Limit is exceeded (use crt.sh public postgres interface)
-  - Cloudflare
-  - Listening on 443 with HTTP
-  - Possible missing exclusion for /.well-known/acme-challenge in webserver based on sniffing
-  - all other ideas from https://community.letsencrypt.org/t/creating-a-webservice-for-analysis-of-common-problems/45836/2
