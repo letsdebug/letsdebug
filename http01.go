@@ -67,14 +67,29 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		probs = append(probs, noRecords(domain, "No A or AAAA records found."))
 	}
 
+	// Track one response from IPv4 and one response from IPv6
+	// in order to check whether they might be pointing to different servers
+	var v4Res httpCheckResult
+	var v6Res httpCheckResult
+
 	for _, ip := range ips {
 		if isAddressReserved(ip) {
 			probs = append(probs, reservedAddress(domain, ip.String()))
 			continue
 		}
-		if prob := checkHTTP(domain, ip); !prob.IsZero() {
+		res, prob := checkHTTP(domain, ip)
+		if !prob.IsZero() {
 			probs = append(probs, prob)
 		}
+		if v4Res.IsZero() && ip.To4() != nil {
+			v4Res = res
+		} else if v6Res.IsZero() {
+			v6Res = res
+		}
+	}
+
+	if (!v6Res.IsZero() && !v6Res.IsZero()) && (v4Res.StatusCode != v6Res.StatusCode || v4Res.ServerHeader != v6Res.ServerHeader) {
+		probs = append(probs, v4v6Discrepancy(domain, v4Res, v6Res))
 	}
 
 	return probs, nil
@@ -99,5 +114,17 @@ func reservedAddress(name, address string) Problem {
 			`or use the DNS validation method instead.`, name),
 		Detail:   address,
 		Severity: SeverityError,
+	}
+}
+
+func v4v6Discrepancy(domain string, v4Result, v6Result httpCheckResult) Problem {
+	return Problem{
+		Name: "IPv6Ipv6Discrepancy",
+		Explanation: fmt.Sprintf(`%s has both AAAA (IPv6) and A (IPv4) records. While they both appear to be accessible on the network, `+
+			`we have detected that they produce differing results when sent an ACME HTTP validation request. This may indicate that `+
+			`the IPv4 and IPv6 addresses may unintentionally point to different servers, which would cause validation to fail.`,
+			domain),
+		Detail:   fmt.Sprintf("%s vs %s", v4Result.String(), v6Result.String()),
+		Severity: SeverityWarning,
 	}
 }

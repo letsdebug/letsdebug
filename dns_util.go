@@ -77,7 +77,6 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		Val string
 	}{
 		{"verbosity:", "0"},
-		{"so-reuseport:", "yes"},
 		{"use-syslog:", "no"},
 		{"do-ip4:", "yes"},
 		{"do-ip6:", "yes"},

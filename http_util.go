@@ -21,11 +21,32 @@ func (e redirectError) Error() string {
 	return string(e)
 }
 
-func checkHTTP(domain string, address net.IP) Problem {
+type httpCheckResult struct {
+	StatusCode   int
+	ServerHeader string
+	IP           net.IP
+}
+
+func (r httpCheckResult) IsZero() bool {
+	return r.StatusCode == 0
+}
+
+func (r httpCheckResult) String() string {
+	addrType := "IPv6"
+	if r.IP.To4() != nil {
+		addrType = "IPv4"
+	}
+	return fmt.Sprintf("[Address Type=%s,Response Code=%d,Server=%s]", addrType, r.StatusCode, r.ServerHeader)
+}
+
+func checkHTTP(domain string, address net.IP) (httpCheckResult, Problem) {
 	dialer := net.Dialer{
 		Timeout: httpTimeout * time.Second,
 	}
 
+	checkRes := httpCheckResult{
+		IP: address,
+	}
 	var redirErr redirectError
 
 	cl := http.Client{
@@ -76,7 +97,7 @@ func checkHTTP(domain string, address net.IP) Problem {
 
 	req, err := http.NewRequest("GET", "http://"+domain+"/.well-known/acme-challenge/letsdebug-test", nil)
 	if err != nil {
-		return internalProblem(fmt.Sprintf("Failed to construct validation request: %v", err), SeverityError)
+		return checkRes, internalProblem(fmt.Sprintf("Failed to construct validation request: %v", err), SeverityError)
 	}
 
 	req.Header.Set("Accept", "*/*")
@@ -88,16 +109,20 @@ func checkHTTP(domain string, address net.IP) Problem {
 	req = req.WithContext(ctx)
 
 	resp, err := cl.Do(req)
+	if resp != nil {
+		checkRes.StatusCode = resp.StatusCode
+		checkRes.ServerHeader = resp.Header.Get("Server")
+	}
 	if err != nil {
 		if redirErr != "" {
 			err = redirErr
 		}
-		return translateHTTPError(domain, address, err)
+		return checkRes, translateHTTPError(domain, address, err)
 	}
 
 	defer resp.Body.Close()
 
-	return Problem{}
+	return checkRes, Problem{}
 }
 
 func translateHTTPError(domain string, address net.IP, e error) Problem {
