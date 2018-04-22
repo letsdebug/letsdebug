@@ -18,7 +18,7 @@ func Check(domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 	for _, checker := range checkers {
 		if checkerProbs, err := checker.Check(ctx, domain, method); err == nil {
-			if len(probs) > 0 {
+			if len(checkerProbs) > 0 {
 				probs = append(probs, checkerProbs...)
 			}
 
