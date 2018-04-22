@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -133,6 +134,11 @@ func translateHTTPError(domain string, address net.IP, e error) Problem {
 	if strings.HasSuffix(e.Error(), "http: server gave HTTP response to HTTPS client") {
 		return httpServerMisconfiguration(domain, "Web server is serving the wrong protocol on the wrong port: "+e.Error()+
 			". This may be due to a previous HTTP redirect rather than a webserver misconfiguration.")
+	}
+
+	// Make a nicer error message if it was a context timeout
+	if urlErr, ok := e.(*url.Error); ok && urlErr.Timeout() {
+		e = fmt.Errorf("A timeout was experienced while communicating with %s/%s: %v", domain, address.String(), urlErr)
 	}
 
 	if address.To4() == nil {
