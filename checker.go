@@ -80,16 +80,18 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 
 	var probs []Problem
 
-	select {
-	case checkerProbs := <-resultsChan:
-		// store any results
-		if len(checkerProbs) > 0 {
-			probs = append(probs, checkerProbs...)
-		}
+	for i := 0; i < len(c); i++ {
+		select {
+		case checkerProbs := <-resultsChan:
+			// store any results
+			if len(checkerProbs) > 0 {
+				probs = append(probs, checkerProbs...)
+			}
 
-	case err := <-errChan:
-		// short circuit exit
-		return probs, err
+		case err := <-errChan:
+			// short circuit exit
+			return probs, err
+		}
 	}
 
 	return probs, nil
