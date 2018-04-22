@@ -47,6 +47,11 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 		return probs, nil
 	}
 
+	if rule.Decompose(domain)[1] == "" {
+		probs = append(probs, invalidDomain(domain, "Domain is a TLD"))
+		return probs, nil
+	}
+
 	return probs, nil
 }
 
