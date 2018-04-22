@@ -15,7 +15,11 @@ import (
 type validDomainChecker struct{}
 
 func (c validDomainChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
-	probs := []Problem{}
+	var probs []Problem
+
+	if strings.HasPrefix(domain, "*.") {
+		domain = domain[2:]
+	}
 
 	for _, ch := range []byte(domain) {
 		if (('a' <= ch && ch <= 'z') ||
@@ -46,6 +50,7 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 	return probs, nil
 }
 
+// caaChecker ensures that any caa record on the domain, or up the domain tree, allow issuance for letsencrypt.org
 type caaChecker struct{}
 
 func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
@@ -111,7 +116,6 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 		}
 
 		probs = append(probs, caaIssuanceNotAllowed(domain, wildcard, records))
-
 		return probs, nil
 	}
 
