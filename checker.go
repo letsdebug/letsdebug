@@ -72,7 +72,7 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 		go func(chk checker) {
 			defer wg.Done()
 			probs, err := chk.Check(ctx, domain, method)
-			if err != nil {
+			if err != nil && err != errNotApplicable {
 				errChan <- err
 				return
 			}
