@@ -2,6 +2,7 @@ package letsdebug
 
 import (
 	"errors"
+	"sync"
 )
 
 // ValidationMethod represents an ACME validation method
@@ -36,4 +37,55 @@ func init() {
 
 type checker interface {
 	Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error)
+}
+
+// asyncCheckerBlock represents a checker which is composed of other checkers that can be run simultaneously.
+type asyncCheckerBlock []checker
+
+func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	// waitgroup for all the checker goroutines
+	var wg sync.WaitGroup
+	wg.Add(len(c))
+
+	// error channel which either
+	// - signals either the waitgroup is done (nil error)
+	// - signals a checker has encountered an error (shortcut other checkers)
+	errChan := make(chan error, len(c))
+
+	go func() {
+		wg.Wait()
+		errChan <- nil
+	}()
+
+	// channel to which any problems encountered in each checker are written
+	resultsChan := make(chan []Problem, len(c))
+
+	// launch each goroutine
+	for _, currentChecker := range c {
+		go func(chk checker) {
+			defer wg.Done()
+			probs, err := chk.Check(ctx, domain, method)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			resultsChan <- probs
+		}(currentChecker)
+	}
+
+	var probs []Problem
+
+	select {
+	case checkerProbs := <-resultsChan:
+		// store any results
+		if len(checkerProbs) > 0 {
+			probs = append(probs, checkerProbs...)
+		}
+
+	case err := <-errChan:
+		// short circuit exit
+		return probs, err
+	}
+
+	return probs, nil
 }

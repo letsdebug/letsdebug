@@ -18,17 +18,12 @@ func Check(domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 	for _, checker := range checkers {
 		if checkerProbs, err := checker.Check(ctx, domain, method); err == nil {
-			probs = append(probs, checkerProbs...)
+			if len(probs) > 0 {
+				probs = append(probs, checkerProbs...)
+			}
 
 			// dont continue checking when a fatal error occurs
-			hasFatal := false
-			for _, p := range probs {
-				if p.Severity == SeverityFatal {
-					hasFatal = true
-					break
-				}
-			}
-			if hasFatal {
+			if hasFatalProblem(probs) {
 				break
 			}
 		} else if err != errNotApplicable {

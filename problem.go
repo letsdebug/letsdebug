@@ -31,6 +31,16 @@ func (p Problem) IsZero() bool {
 	return p.Name == ""
 }
 
+func hasFatalProblem(probs []Problem) bool {
+	for _, p := range probs {
+		if p.Severity == SeverityFatal {
+			return true
+		}
+	}
+
+	return false
+}
+
 func internalProblem(message string, level SeverityLevel) Problem {
 	return Problem{
 		Name:        "InternalProblem",

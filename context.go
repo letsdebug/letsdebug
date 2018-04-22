@@ -1,6 +1,10 @@
 package letsdebug
 
-import "github.com/miekg/dns"
+import (
+	"sync"
+
+	"github.com/miekg/dns"
+)
 
 type lookupResult struct {
 	RRs   []dns.RR
@@ -8,7 +12,8 @@ type lookupResult struct {
 }
 
 type scanContext struct {
-	rrs map[string]map[uint16]lookupResult
+	rrs      map[string]map[uint16]lookupResult
+	rrsMutex sync.Mutex
 }
 
 func newScanContext() *scanContext {
@@ -18,6 +23,9 @@ func newScanContext() *scanContext {
 }
 
 func (sc *scanContext) Lookup(name string, rrType uint16) ([]dns.RR, error) {
+	sc.rrsMutex.Lock()
+	defer sc.rrsMutex.Unlock()
+
 	rrMap, ok := sc.rrs[name]
 	if !ok {
 		rrMap = map[uint16]lookupResult{}
