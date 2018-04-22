@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	ValidMethods     = map[ValidationMethod]bool{HTTP01: true, DNS01: true, TLSSNI01: true, TLSSNI02: true}
+	validMethods     = map[ValidationMethod]bool{HTTP01: true, DNS01: true, TLSSNI01: true, TLSSNI02: true}
 	errNotApplicable = errors.New("Checker not applicable for this domain and method")
 	checkers         []checker
 )
@@ -24,6 +24,7 @@ var (
 func init() {
 	checkers = []checker{
 		// show stopping checkers
+		validMethodChecker{},
 		validDomainChecker{},
 		tlssni0102DisabledChecker{},
 		wildcardDns01OnlyChecker{},

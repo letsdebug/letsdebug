@@ -17,12 +17,6 @@ func main() {
 	flag.StringVar(&validationMethod, "method", "http-01", "Which validation method to assume (http-01,dns-01)")
 	flag.Parse()
 
-	if !letsdebug.ValidMethods[letsdebug.ValidationMethod(validationMethod)] {
-		fmt.Fprintf(os.Stderr, "%s is not a supported ACME validation method\n", validationMethod)
-		flag.Usage()
-		os.Exit(1)
-	}
-
 	probs, err := letsdebug.Check(domain, letsdebug.ValidationMethod(validationMethod))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "A fatal error was experienced: %s", err)

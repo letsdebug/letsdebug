@@ -17,6 +17,30 @@ import (
 	psl "github.com/weppos/publicsuffix-go/publicsuffix"
 )
 
+// validMethodChecker ensures that the provided authorization method is valid and supported.
+type validMethodChecker struct{}
+
+func (c validMethodChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if validMethods[method] {
+		return nil, errNotApplicable
+	}
+
+	return []Problem{notValidMethod(method)}, nil
+}
+
+func notValidMethod(method ValidationMethod) Problem {
+	var supportedMethods []string
+	for k := range validMethods {
+		supportedMethods = append(supportedMethods, string(k))
+	}
+	return Problem{
+		Name:        "InvalidMethod",
+		Explanation: fmt.Sprintf(`"%s" is not a supported validation method.`, method),
+		Detail:      fmt.Sprintf("Supported methods: %s", strings.Join(supportedMethods, ", ")),
+		Severity:    SeverityFatal,
+	}
+}
+
 // validDomainChecker ensures that the FQDN is well-formed and is part of a public suffix.
 type validDomainChecker struct{}
 
