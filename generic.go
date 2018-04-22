@@ -6,6 +6,10 @@ import (
 
 	"fmt"
 
+	"net/http"
+
+	"time"
+
 	"github.com/miekg/dns"
 	"github.com/weppos/publicsuffix-go/net/publicsuffix"
 	psl "github.com/weppos/publicsuffix-go/publicsuffix"
@@ -181,5 +185,67 @@ func invalidDomain(domain, reason string) Problem {
 		Explanation: fmt.Sprintf(`"%s" is not a valid domain name that Let's Encrypt would be able to issue a certificate for.`, domain),
 		Detail:      reason,
 		Severity:    SeverityFatal,
+	}
+}
+
+// cloudflareChecker determines if the domain is using cloudflare, and whether a certificate has been provisioned by cloudflare yet.
+type cloudflareChecker struct{}
+
+func (c cloudflareChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	var probs []Problem
+
+	cl := http.Client{
+		Timeout: httpTimeout * time.Second,
+	}
+	resp, err := cl.Get("https://" + domain)
+	if err == nil { // no tls error, cert must be issued
+		// check if it's cloudflare
+		if hasCloudflareHeader(resp.Header) {
+			probs = append(probs, cloudflareCDN(domain))
+		}
+
+		return probs, nil
+	}
+
+	// disable redirects
+	cl.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	// attempt to connect over http with redirects disabled to check cloudflare header
+	resp, err = cl.Get("http://" + domain)
+	if err != nil {
+		return probs, nil
+	}
+
+	if hasCloudflareHeader(resp.Header) {
+		probs = append(probs, cloudflareCDN(domain))
+		probs = append(probs, cloudflareSslNotProvisioned(domain))
+	}
+
+	return probs, nil
+}
+
+func hasCloudflareHeader(h http.Header) bool {
+	return strings.Contains(strings.ToLower(h.Get("server")), "cloudflare")
+}
+
+func cloudflareCDN(domain string) Problem {
+	return Problem{
+		Name: "CloudflareCDN",
+		Explanation: fmt.Sprintf(`The domain %s is being served through Cloudflare CDN. Any Let's Encrypt certificate installed on the `+
+			`origin server will only encrypt traffic between the server and Cloudflare. It is strongly recommended that the SSL option 'Full SSL (strict)' `+
+			`be enabled.`, domain),
+		Detail:   "https://support.cloudflare.com/hc/en-us/articles/200170416-What-do-the-SSL-options-mean-",
+		Severity: SeverityWarning,
+	}
+}
+
+func cloudflareSslNotProvisioned(domain string) Problem {
+	return Problem{
+		Name:        "CloudflareSSLNotProvisioned",
+		Explanation: fmt.Sprintf(`The domain %s is being served through Cloudflare CDN and a certificate has not yet been provisioned yet by Cloudflare.`, domain),
+		Detail:      "https://support.cloudflare.com/hc/en-us/articles/203045244-How-long-does-it-take-for-Cloudflare-s-SSL-to-activate-",
+		Severity:    SeverityWarning,
 	}
 }

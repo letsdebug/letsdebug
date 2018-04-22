@@ -31,7 +31,11 @@ func init() {
 
 		// others
 		dnsAChecker{},
-		httpAccessibilityChecker{},
+
+		asyncCheckerBlock{
+			httpAccessibilityChecker{},
+			cloudflareChecker{},
+		},
 	}
 }
 
