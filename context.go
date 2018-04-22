@@ -24,23 +24,26 @@ func newScanContext() *scanContext {
 
 func (sc *scanContext) Lookup(name string, rrType uint16) ([]dns.RR, error) {
 	sc.rrsMutex.Lock()
-	defer sc.rrsMutex.Unlock()
-
 	rrMap, ok := sc.rrs[name]
 	if !ok {
 		rrMap = map[uint16]lookupResult{}
 		sc.rrs[name] = rrMap
 	}
+	result, ok := rrMap[rrType]
+	sc.rrsMutex.Unlock()
 
-	if result, ok := rrMap[rrType]; ok {
+	if ok {
 		return result.RRs, result.Error
 	}
 
 	resolved, err := lookup(name, rrType)
+
+	sc.rrsMutex.Lock()
 	rrMap[rrType] = lookupResult{
 		RRs:   resolved,
 		Error: err,
 	}
+	sc.rrsMutex.Unlock()
 
 	return resolved, err
 }
