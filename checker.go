@@ -23,6 +23,7 @@ var (
 func init() {
 	checkers = []checker{
 		// show stopping checkers
+		validDomainChecker{},
 		tlssni0102DisabledChecker{},
 		wildcardDns01OnlyChecker{},
 		caaChecker{},

@@ -14,6 +14,15 @@
   revision = "e2b53b2dbcba70761a419d805d9d6f4ee6e1b0e4"
 
 [[projects]]
+  name = "github.com/weppos/publicsuffix-go"
+  packages = [
+    "net/publicsuffix",
+    "publicsuffix"
+  ]
+  revision = "386050f8211b04c965721c3591e7d96650a1ea86"
+  version = "v0.4.0"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
@@ -31,8 +40,7 @@
     "internal/iana",
     "internal/socket",
     "ipv4",
-    "ipv6",
-    "publicsuffix"
+    "ipv6"
   ]
   revision = "d41e8174641f662c5a2d1c7a5f9e828788eb8706"
 
@@ -60,6 +68,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4d45ea76887b279aa245725f5c0fe4b1c2eb7b15e83ed7ff51185f5433749e3e"
+  inputs-digest = "03b7f772bbc099707d1200881b8f6f7d6f67268a3c333d7a4250b875c857d480"
   solver-name = "gps-cdcl"
   solver-version = 1

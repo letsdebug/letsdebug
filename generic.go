@@ -1,13 +1,50 @@
 package letsdebug
 
 import (
+	"net"
 	"strings"
 
 	"fmt"
 
 	"github.com/miekg/dns"
-	"golang.org/x/net/publicsuffix"
+	"github.com/weppos/publicsuffix-go/net/publicsuffix"
+	psl "github.com/weppos/publicsuffix-go/publicsuffix"
 )
+
+// validDomainChecker ensures that the FQDN is well-formed and is part of a public suffix.
+type validDomainChecker struct{}
+
+func (c validDomainChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	probs := []Problem{}
+
+	for _, ch := range []byte(domain) {
+		if (('a' <= ch && ch <= 'z') ||
+			('A' <= ch && ch <= 'A') ||
+			('0' <= ch && ch <= '9') ||
+			ch == '.' || ch == '-') == false {
+			probs = append(probs, invalidDomain(domain, fmt.Sprintf("Invalid character present: %c", ch)))
+			return probs, nil
+		}
+	}
+
+	if len(domain) > 230 {
+		probs = append(probs, invalidDomain(domain, "Domain too long"))
+		return probs, nil
+	}
+
+	if ip := net.ParseIP(domain); ip != nil {
+		probs = append(probs, invalidDomain(domain, "Domain is an IP address"))
+		return probs, nil
+	}
+
+	rule := psl.DefaultList.Find(domain, &psl.FindOptions{IgnorePrivate: true, DefaultRule: nil})
+	if rule == nil {
+		probs = append(probs, invalidDomain(domain, "Domain doesn't end in a public TLD"))
+		return probs, nil
+	}
+
+	return probs, nil
+}
 
 type caaChecker struct{}
 
@@ -80,7 +117,7 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 
 	// recurse up to the public suffix domain until a caa record is found
 	// a.b.c.com -> b.c.com -> c.com until
-	if ps, _ := publicsuffix.PublicSuffix(domain); domain != ps {
+	if ps, _ := publicsuffix.PublicSuffix(domain); domain != ps && ps != "" {
 		splitDomain := strings.SplitN(domain, ".", 2)
 
 		parentProbs, err := c.Check(ctx, splitDomain[1], method)
@@ -126,5 +163,14 @@ func caaIssuanceNotAllowed(domain string, wildcard bool, records []*dns.CAA) Pro
 			`A list of the CAA records are provided in the details.`, domain, wildcard),
 		Detail:   collateRecords(records),
 		Severity: SeverityFatal,
+	}
+}
+
+func invalidDomain(domain, reason string) Problem {
+	return Problem{
+		Name:        "InvalidDomain",
+		Explanation: fmt.Sprintf(`"%s" is not a valid domain name that Let's Encrypt would be able to issue a certificate for.`, domain),
+		Detail:      reason,
+		Severity:    SeverityFatal,
 	}
 }
