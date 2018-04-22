@@ -36,6 +36,7 @@ func init() {
 			httpAccessibilityChecker{},
 			cloudflareChecker{},
 			statusioChecker{},
+			txtRecordChecker{},
 		},
 	}
 }
