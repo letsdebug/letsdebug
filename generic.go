@@ -10,6 +10,8 @@ import (
 
 	"time"
 
+	"encoding/json"
+
 	"github.com/miekg/dns"
 	"github.com/weppos/publicsuffix-go/net/publicsuffix"
 	psl "github.com/weppos/publicsuffix-go/publicsuffix"
@@ -247,5 +249,49 @@ func cloudflareSslNotProvisioned(domain string) Problem {
 		Explanation: fmt.Sprintf(`The domain %s is being served through Cloudflare CDN and a certificate has not yet been provisioned yet by Cloudflare.`, domain),
 		Detail:      "https://support.cloudflare.com/hc/en-us/articles/203045244-How-long-does-it-take-for-Cloudflare-s-SSL-to-activate-",
 		Severity:    SeverityWarning,
+	}
+}
+
+// statusioChecker ensures there is no reported operational problem with the Let's Encrypt service via the status.io public api.
+type statusioChecker struct{}
+
+func (c statusioChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	var probs []Problem
+
+	resp, err := http.Get("https://api.status.io/1.0/status/55957a99e800baa4470002da")
+	if err != nil {
+		// some connectivity errors with status.io is probably not worth reporting
+		return probs, nil
+	}
+	defer resp.Body.Close()
+
+	statusioApiResp := struct {
+		Result struct {
+			StatusOverall struct {
+				Updated    time.Time `json:"updated"`
+				Status     string    `json:"status"`
+				StatusCode int       `json:"status_code"`
+			} `json:"status_overall"`
+		} `json:"result"`
+	}{}
+
+	if err := json.NewDecoder(resp.Body).Decode(&statusioApiResp); err != nil {
+		return probs, fmt.Errorf("error decoding status.io api response: %v", err)
+	}
+
+	if statusioApiResp.Result.StatusOverall.StatusCode != 100 {
+		probs = append(probs, statusioNotOperational(statusioApiResp.Result.StatusOverall.Status, statusioApiResp.Result.StatusOverall.Updated))
+	}
+
+	return probs, nil
+}
+
+func statusioNotOperational(status string, updated time.Time) Problem {
+	return Problem{
+		Name: "StatusNotOperational",
+		Explanation: fmt.Sprintf(`The current status as reported by the Let's Encrypt status page is %s as at %v. `+
+			`Depending on the reported problem, this may affect certificate issuance. For more information, please visit the status page.`, status, updated),
+		Detail:   "https://letsencrypt.status.io/",
+		Severity: SeverityWarning,
 	}
 }
