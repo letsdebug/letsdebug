@@ -196,6 +196,10 @@ type cloudflareChecker struct{}
 func (c cloudflareChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 
+	if strings.HasPrefix(domain, "*.") {
+		domain = domain[2:]
+	}
+
 	cl := http.Client{
 		Timeout: httpTimeout * time.Second,
 	}
