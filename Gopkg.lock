@@ -2,6 +2,15 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid"
+  ]
+  revision = "d34b9ff171c21ad295489235aec8b6626023cd04"
+
+[[projects]]
   name = "github.com/miekg/dns"
   packages = ["."]
   revision = "83c435cc65d2862736428b9b4d07d0ab10ad3e4d"
@@ -68,6 +77,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03b7f772bbc099707d1200881b8f6f7d6f67268a3c333d7a4250b875c857d480"
+  inputs-digest = "a4dae245e17ba14d8019f0ba8048268d4568640f8b740e7740223924023f2f2d"
   solver-name = "gps-cdcl"
   solver-version = 1
