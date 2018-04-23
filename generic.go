@@ -334,15 +334,15 @@ func statusioNotOperational(status string, updated time.Time) Problem {
 type crtList map[uint64]*x509.Certificate
 
 // FindCommonPSLCertificates finds any certificates which contain any DNSName
-// that shares a PublicSuffix with `domain`.
-func (l crtList) FindCommonPSLCertificates(domain string) []*x509.Certificate {
+// that shares the Registered Domain `registeredDomain`.
+func (l crtList) FindWithCommonRegisteredDomains(registeredDomain string) []*x509.Certificate {
 	var out []*x509.Certificate
 
-	suffix, _ := publicsuffix.PublicSuffix(domain)
 	for _, cert := range l {
 		for _, name := range cert.DNSNames {
-			if nameSuffix, _ := publicsuffix.PublicSuffix(name); nameSuffix == suffix {
+			if nameRegDomain, _ := publicsuffix.EffectiveTLDPlusOne(name); nameRegDomain == registeredDomain {
 				out = append(out, cert)
+				break
 			}
 		}
 	}
@@ -445,7 +445,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 
 	// Limit: Certificates per Registered Domain
 	// TODO: implement Renewal Excemption
-	sharedSuffix := certs.FindCommonPSLCertificates(registeredDomain)
+	sharedSuffix := certs.FindWithCommonRegisteredDomains(registeredDomain)
 	if len(sharedSuffix) >= 20 {
 		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
 		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
@@ -453,7 +453,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 		probs = append(probs, rateLimited(domain, fmt.Sprintf("The 'Certificates per Registered Domain' limit ("+
 			"20 certificates per week that share the same Registered Domain: %s) has been exceeded. "+
 			"There is no way to work around this rate limit. "+
-			"The next certificate for this Registered Domain should be issuable after %v (%v from now).",
+			"The next non-renewal certificate for this Registered Domain should be issuable after %v (%v from now).",
 			registeredDomain, dropOff, dropOffDiff)))
 	}
 
