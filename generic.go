@@ -335,7 +335,7 @@ type crtList map[uint64]*x509.Certificate
 
 // FindCommonPSLCertificates finds any certificates which contain any DNSName
 // that shares the Registered Domain `registeredDomain`.
-func (l crtList) FindWithCommonRegisteredDomains(registeredDomain string) []*x509.Certificate {
+func (l crtList) FindWithCommonRegisteredDomain(registeredDomain string) []*x509.Certificate {
 	var out []*x509.Certificate
 
 	for _, cert := range l {
@@ -445,8 +445,8 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 
 	// Limit: Certificates per Registered Domain
 	// TODO: implement Renewal Excemption
-	sharedSuffix := certs.FindWithCommonRegisteredDomains(registeredDomain)
-	if len(sharedSuffix) >= 20 {
+	certsTowardsRateLimit := certs.FindWithCommonRegisteredDomain(registeredDomain)
+	if len(certsTowardsRateLimit) >= 20 {
 		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
 		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
 
