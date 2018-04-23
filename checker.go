@@ -38,6 +38,7 @@ func init() {
 			cloudflareChecker{},
 			statusioChecker{},
 			txtRecordChecker{},
+			&rateLimitChecker{},
 		},
 	}
 }

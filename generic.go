@@ -1,8 +1,13 @@
 package letsdebug
 
 import (
+	"context"
+	"crypto/x509"
+	"database/sql"
 	"net"
+	"os"
 	"strings"
+	"sync"
 
 	"fmt"
 
@@ -12,6 +17,8 @@ import (
 
 	"encoding/json"
 
+	// Driver for crtwatch/ratelimitChecker
+	_ "github.com/lib/pq"
 	"github.com/miekg/dns"
 	"github.com/weppos/publicsuffix-go/net/publicsuffix"
 	psl "github.com/weppos/publicsuffix-go/publicsuffix"
@@ -321,5 +328,139 @@ func statusioNotOperational(status string, updated time.Time) Problem {
 			`Depending on the reported problem, this may affect certificate issuance. For more information, please visit the status page.`, status, updated),
 		Detail:   "https://letsencrypt.status.io/",
 		Severity: SeverityWarning,
+	}
+}
+
+type crtList map[uint64]*x509.Certificate
+
+// FindCommonPSLCertificates finds any certificates which contain any DNSName
+// that shares a PublicSuffix with `domain`.
+func (l crtList) FindCommonPSLCertificates(domain string) []*x509.Certificate {
+	var out []*x509.Certificate
+
+	suffix, _ := publicsuffix.PublicSuffix(domain)
+	for _, cert := range l {
+		for _, name := range cert.DNSNames {
+			if nameSuffix, _ := publicsuffix.PublicSuffix(name); nameSuffix == suffix {
+				out = append(out, cert)
+			}
+		}
+	}
+
+	return out
+}
+
+func (l crtList) GetOldestCertificate() *x509.Certificate {
+	var oldest *x509.Certificate
+	for _, crt := range l {
+		if oldest == nil || crt.NotBefore.Before(oldest.NotBefore) {
+			oldest = crt
+		}
+	}
+	return oldest
+}
+
+// rateLimitChecker ensures that the domain is not currently affected
+// by domain-based rate limits using crtwatch's database
+type rateLimitChecker struct {
+	db   *sql.DB
+	dbMu sync.Mutex
+}
+
+const rateLimitCheckerQuery = `SELECT c.ID, c.CERTIFICATE der
+FROM certificate c
+LEFT JOIN certificate_identity ci ON ci.CERTIFICATE_ID = c.id AND ci.name_type = 'dNSName'
+WHERE c.ISSUER_CA_ID IN (16418)
+AND reverse(lower(ci.NAME_VALUE)) LIKE reverse(lower($1))
+AND x509_notBefore(c.CERTIFICATE) >= $2;
+`
+
+// Pointer receiver because we're keeping state across runs
+func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if os.Getenv("LETSDEBUG_DISABLE_CERTWATCH") != "" {
+		return nil, errNotApplicable
+	}
+
+	if strings.HasPrefix(domain, "*.") {
+		domain = domain[2:]
+	}
+
+	// DB setup once
+	c.dbMu.Lock()
+	if c.db == nil {
+		db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable")
+		if err != nil {
+			c.dbMu.Unlock()
+			return []Problem{
+				internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityWarning),
+			}, nil
+		}
+		c.db = db
+	}
+	c.dbMu.Unlock()
+
+	cutoff := time.Now().Add(-7 * 24 * time.Hour)
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	rows, err := c.db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+domain, cutoff)
+	if err != nil && err != sql.ErrNoRows {
+		return []Problem{
+			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityWarning),
+		}, nil
+	}
+
+	probs := []Problem{}
+
+	// Read in the DER-encoded certificates
+	certs := crtList{}
+
+	var certBytes []byte
+	var crtID uint64
+	for rows.Next() {
+		if err := rows.Scan(&crtID, &certBytes); err != nil {
+			probs = append(probs, internalProblem(fmt.Sprintf("Failed to query certwatch database while checking rate limits: %v", err), SeverityWarning))
+			break
+		}
+		crt, err := x509.ParseCertificate(certBytes)
+		if err != nil {
+			probs = append(probs, internalProblem(fmt.Sprintf("Failed to parse certificate while checking rate limits: %v", err), SeverityWarning))
+			continue
+		}
+		certs[crtID] = crt
+	}
+	if err := rows.Err(); err != nil {
+		return []Problem{
+			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityWarning),
+		}, nil
+	}
+
+	// Limit: Certificates per Registered Domain
+	// TODO: implement Renewal Excemption
+	sharedSuffix := certs.FindCommonPSLCertificates(domain)
+	if len(sharedSuffix) >= 20 {
+		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
+		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
+
+		probs = append(probs, rateLimited(domain, fmt.Sprintf("You have exceeded the 'Certificates per Registered Domain' limit ("+
+			"20 certificates per week that share the same registered domain). There is no way to work around this rate limit. "+
+			"Your next certificate for this Registered Domain should be issuable after %v (%v from now).",
+			dropOff, dropOffDiff)))
+	}
+
+	// TODO Limit: Duplicate Certificate limit of 5 certificates per week
+
+	return probs, nil
+}
+
+func rateLimited(domain, detail string) Problem {
+	return Problem{
+		Name: "RateLimit",
+		Explanation: fmt.Sprintf(`%s is currently affected by Let's Encrypt-based rate limits (https://letsencrypt.org/docs/rate-limits/). `+
+			`You may review certificates that have already been issued by visiting https://crt.sh/?q=%%%s . `+
+			`Please note that it is not possible to ask for a rate limit to be manually cleared.`, domain, domain),
+		Detail:   detail,
+		Severity: SeverityError,
 	}
 }
