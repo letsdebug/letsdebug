@@ -372,7 +372,9 @@ FROM certificate c
 LEFT JOIN certificate_identity ci ON ci.CERTIFICATE_ID = c.id AND ci.name_type = 'dNSName'
 WHERE c.ISSUER_CA_ID IN (16418)
 AND reverse(lower(ci.NAME_VALUE)) LIKE reverse(lower($1))
-AND x509_notBefore(c.CERTIFICATE) >= $2;
+AND x509_notBefore(c.CERTIFICATE) >= $2
+ORDER BY x509_notBefore(c.CERTIFICATE) DESC
+OFFSET 0 LIMIT 100;
 `
 
 // Pointer receiver because we're keeping state across runs
@@ -399,12 +401,13 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	}
 	c.dbMu.Unlock()
 
-	cutoff := time.Now().Add(-7 * 24 * time.Hour)
+	// Since we are checking rate limits, we need to query the Registered Domain
+	// for the domain in question
+	registeredDomain, _ := publicsuffix.EffectiveTLDPlusOne(domain)
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	rows, err := c.db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+domain, cutoff)
+	rows, err := c.db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+registeredDomain, time.Now().Add(-7*24*time.Hour))
 	if err != nil && err != sql.ErrNoRows {
 		return []Problem{
 			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityWarning),
@@ -415,7 +418,6 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 
 	// Read in the DER-encoded certificates
 	certs := crtList{}
-
 	var certBytes []byte
 	var crtID uint64
 	for rows.Next() {
@@ -436,17 +438,23 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 		}, nil
 	}
 
+	// No certificates issued in last 7 days
+	if len(certs) == 0 {
+		return probs, nil
+	}
+
 	// Limit: Certificates per Registered Domain
 	// TODO: implement Renewal Excemption
-	sharedSuffix := certs.FindCommonPSLCertificates(domain)
+	sharedSuffix := certs.FindCommonPSLCertificates(registeredDomain)
 	if len(sharedSuffix) >= 20 {
 		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
 		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
 
-		probs = append(probs, rateLimited(domain, fmt.Sprintf("You have exceeded the 'Certificates per Registered Domain' limit ("+
-			"20 certificates per week that share the same registered domain). There is no way to work around this rate limit. "+
-			"Your next certificate for this Registered Domain should be issuable after %v (%v from now).",
-			dropOff, dropOffDiff)))
+		probs = append(probs, rateLimited(domain, fmt.Sprintf("The 'Certificates per Registered Domain' limit ("+
+			"20 certificates per week that share the same Registered Domain: %s) has been exceeded. "+
+			"There is no way to work around this rate limit. "+
+			"The next certificate for this Registered Domain should be issuable after %v (%v from now).",
+			registeredDomain, dropOff, dropOffDiff)))
 	}
 
 	// TODO Limit: Duplicate Certificate limit of 5 certificates per week
@@ -455,11 +463,12 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 }
 
 func rateLimited(domain, detail string) Problem {
+	registeredDomain, _ := publicsuffix.EffectiveTLDPlusOne(domain)
 	return Problem{
 		Name: "RateLimit",
 		Explanation: fmt.Sprintf(`%s is currently affected by Let's Encrypt-based rate limits (https://letsencrypt.org/docs/rate-limits/). `+
 			`You may review certificates that have already been issued by visiting https://crt.sh/?q=%%%s . `+
-			`Please note that it is not possible to ask for a rate limit to be manually cleared.`, domain, domain),
+			`Please note that it is not possible to ask for a rate limit to be manually cleared.`, domain, registeredDomain),
 		Detail:   detail,
 		Severity: SeverityError,
 	}
