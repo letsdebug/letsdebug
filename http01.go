@@ -3,6 +3,7 @@ package letsdebug
 import (
 	"fmt"
 	"net"
+	"sync"
 
 	"github.com/miekg/dns"
 )
@@ -17,15 +18,28 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 	}
 
 	var probs []Problem
+	var aErr, aaaaErr error
 
-	_, err := ctx.Lookup(domain, dns.TypeAAAA)
-	if err != nil {
-		probs = append(probs, dnsLookupFailed(domain, "AAAA", err))
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		_, aaaaErr = ctx.Lookup(domain, dns.TypeAAAA)
+	}()
+
+	go func() {
+		defer wg.Done()
+		_, aErr = ctx.Lookup(domain, dns.TypeA)
+	}()
+
+	wg.Wait()
+
+	if aErr != nil {
+		probs = append(probs, dnsLookupFailed(domain, "AAAA", aErr))
 	}
-
-	_, err = ctx.Lookup(domain, dns.TypeA)
-	if err != nil {
-		probs = append(probs, dnsLookupFailed(domain, "A", err))
+	if aaaaErr != nil {
+		probs = append(probs, dnsLookupFailed(domain, "A", aaaaErr))
 	}
 
 	return probs, nil

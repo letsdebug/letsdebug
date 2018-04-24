@@ -39,11 +39,8 @@ func init() {
 		asyncCheckerBlock{
 			caaChecker{},        // depends on valid*Checker
 			&rateLimitChecker{}, // depends on valid*Checker
-		},
-
-		asyncCheckerBlock{
-			dnsAChecker{},      // depends on caaChecker and valid*Checker
-			txtRecordChecker{}, // depends on caaChecker and valid*Checker
+			dnsAChecker{},       // depends on valid*Checker
+			txtRecordChecker{},  // depends on valid*Checker
 		},
 
 		asyncCheckerBlock{
