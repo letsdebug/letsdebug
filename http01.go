@@ -36,10 +36,10 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 	wg.Wait()
 
 	if aErr != nil {
-		probs = append(probs, dnsLookupFailed(domain, "AAAA", aErr))
+		probs = append(probs, dnsLookupFailed(domain, "A", aErr))
 	}
 	if aaaaErr != nil {
-		probs = append(probs, dnsLookupFailed(domain, "A", aaaaErr))
+		probs = append(probs, dnsLookupFailed(domain, "AAAA", aaaaErr))
 	}
 
 	return probs, nil
