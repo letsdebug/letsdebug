@@ -138,7 +138,7 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 		}
 
 		if hasIodef {
-			probs = append(probs, caaIodefUnsupported(domain, wildcard))
+			probs = append(probs, caaIodefUnsupported())
 		}
 
 		if len(criticalUnknown) > 0 {
