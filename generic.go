@@ -344,7 +344,7 @@ func statusioNotOperational(status string, updated time.Time) Problem {
 	}
 }
 
-type crtList map[uint64]*x509.Certificate
+type crtList map[string]*x509.Certificate
 
 // FindCommonPSLCertificates finds any certificates which contain any DNSName
 // that shares the Registered Domain `registeredDomain`.
@@ -380,7 +380,7 @@ type rateLimitChecker struct {
 	dbMu sync.Mutex
 }
 
-const rateLimitCheckerQuery = `SELECT c.ID, c.CERTIFICATE der
+const rateLimitCheckerQuery = `SELECT c.CERTIFICATE der
 FROM certificate c
 WHERE c.ID IN (
 	SELECT DISTINCT ci.CERTIFICATE_ID FROM certificate_identity ci
@@ -435,9 +435,8 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	// Read in the DER-encoded certificates
 	certs := crtList{}
 	var certBytes []byte
-	var crtID uint64
 	for rows.Next() {
-		if err := rows.Scan(&crtID, &certBytes); err != nil {
+		if err := rows.Scan(&certBytes); err != nil {
 			probs = append(probs, internalProblem(fmt.Sprintf("Failed to query certwatch database while checking rate limits: %v", err), SeverityWarning))
 			break
 		}
@@ -446,7 +445,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 			probs = append(probs, internalProblem(fmt.Sprintf("Failed to parse certificate while checking rate limits: %v", err), SeverityWarning))
 			continue
 		}
-		certs[crtID] = crt
+		certs[crt.SerialNumber.String()] = crt
 	}
 	if err := rows.Err(); err != nil {
 		return []Problem{
