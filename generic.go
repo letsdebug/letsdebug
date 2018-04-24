@@ -115,6 +115,7 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 		var issue []*dns.CAA
 		var issuewild []*dns.CAA
 		var criticalUnknown []*dns.CAA
+		hasIodef := false
 
 		for _, rr := range rrs {
 			caaRr, ok := rr.(*dns.CAA)
@@ -128,13 +129,16 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 			case "issuewild":
 				issuewild = append(issuewild, caaRr)
 			case "iodef":
-				// TODO: should this print a notice that lets encrypt doesn't support iodef atm?
-				// https://github.com/letsencrypt/boulder/issues/2580
+				hasIodef = true
 			default:
 				if caaRr.Flag == 1 {
 					criticalUnknown = append(criticalUnknown, caaRr)
 				}
 			}
+		}
+
+		if hasIodef {
+			probs = append(probs, caaIodefUnsupported(domain, wildcard))
 		}
 
 		if len(criticalUnknown) > 0 {
@@ -191,9 +195,18 @@ func collateRecords(records []*dns.CAA) string {
 	return strings.Join(s, "\n")
 }
 
+func caaIodefUnsupported() Problem {
+	return Problem{
+		Name:        "CAAIodefUnsupported",
+		Explanation: "Let's Encrypt does not currently support 'iodef' CAA records.",
+		Detail:      "https://github.com/letsencrypt/boulder/issues/2580",
+		Severity:    SeverityWarning,
+	}
+}
+
 func caaCriticalUnknown(domain string, wildcard bool, records []*dns.CAA) Problem {
 	return Problem{
-		Name: "CaaCriticalUnknown",
+		Name: "CAACriticalUnknown",
 		Explanation: fmt.Sprintf(`CAA record(s) exist on %s (wildcard=%t) that are marked as critical but are unknown to Let's Encrypt. `+
 			`These record(s) as shown in the detail must be removed, or marked as non-critical, before a certificate can be issued by the Let's Encrypt CA.`, domain, wildcard),
 		Detail:   collateRecords(records),
@@ -203,7 +216,7 @@ func caaCriticalUnknown(domain string, wildcard bool, records []*dns.CAA) Proble
 
 func caaIssuanceNotAllowed(domain string, wildcard bool, records []*dns.CAA) Problem {
 	return Problem{
-		Name: "CaaIssuanceNotAllowed",
+		Name: "CAAIssuanceNotAllowed",
 		Explanation: fmt.Sprintf(`No CAA record on %s (wildcard=%t) contains the issuance domain "letsencrypt.org". `+
 			`You must either add an additional record to include "letsencrypt.org" or remove every existing CAA record. `+
 			`A list of the CAA records are provided in the details.`, domain, wildcard),
