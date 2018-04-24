@@ -2,6 +2,7 @@ package letsdebug
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -71,7 +72,13 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 	// launch each goroutine
 	for _, currentChecker := range c {
 		go func(chk checker) {
-			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					errChan <- fmt.Errorf("panic: %v", r)
+				} else {
+					wg.Done()
+				}
+			}()
 			probs, err := chk.Check(ctx, domain, method)
 			if err != nil && err != errNotApplicable {
 				errChan <- err
