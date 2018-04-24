@@ -4,11 +4,15 @@ import (
 	"context"
 	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
+	"io/ioutil"
 	"net"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/eggsampler/acme"
 
 	"fmt"
 
@@ -517,5 +521,153 @@ func rateLimited(domain, detail string) Problem {
 			`Please note that it is not possible to ask for a rate limit to be manually cleared.`, domain, registeredDomain),
 		Detail:   detail,
 		Severity: SeverityError,
+	}
+}
+
+// acmeStagingChecker tries to create an authorization on
+// Let's Encrypt's staging server and parse the error urn
+// to see if there's anything interesting reported.
+type acmeStagingChecker struct {
+	client   acme.AcmeClient
+	account  acme.AcmeAccount
+	clientMu sync.Mutex
+}
+
+func (c *acmeStagingChecker) buildAcmeClient() error {
+	cl, err := acme.NewClient("https://acme-staging-v02.api.letsencrypt.org/directory")
+	if err != nil {
+		return err
+	}
+
+	regrPath := os.Getenv("LETSDEBUG_ACMESTAGING_ACCOUNTFILE")
+	if regrPath == "" {
+		regrPath = "acme-account.json"
+	}
+	buf, err := ioutil.ReadFile(regrPath)
+	if err != nil {
+		return err
+	}
+
+	var out struct {
+		PEM string `json:"pem"`
+		URL string `json:"url"`
+	}
+	if err := json.Unmarshal(buf, &out); err != nil {
+		return err
+	}
+
+	block, _ := pem.Decode([]byte(out.PEM))
+	pk, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	c.account = acme.AcmeAccount{PrivateKey: pk, Url: out.URL}
+	c.client = cl
+
+	return nil
+}
+
+func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if os.Getenv("LETSDEBUG_DISABLE_ACMESTAGING") != "" {
+		return nil, errNotApplicable
+	}
+
+	c.clientMu.Lock()
+	if c.account.PrivateKey == nil {
+		if err := c.buildAcmeClient(); err != nil {
+			c.clientMu.Unlock()
+			return []Problem{
+				internalProblem(fmt.Sprintf("Couldn't setup Let's Encrypt staging checker, skipping: %v", err), SeverityWarning),
+			}, nil
+		}
+	}
+	c.clientMu.Unlock()
+
+	probs := []Problem{}
+
+	order, err := c.client.NewOrder(c.account, []acme.AcmeIdentifier{acme.AcmeIdentifier{Type: "dns", Value: domain}})
+	if err != nil {
+		if p := translateAcmeError(domain, err); p.Name != "" {
+			probs = append(probs, p)
+		}
+		return probs, nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(order.Authorizations))
+	var probsMu sync.Mutex
+
+	unhandledError := func(err error) {
+		probsMu.Lock()
+		defer probsMu.Unlock()
+
+		probs = append(probs, internalProblem("An unknown problem occured while performing a test "+
+			"authorization against the Let's Encrypt staging service: "+err.Error(), SeverityWarning))
+	}
+
+	for _, authzURL := range order.Authorizations {
+		go func(authzURL string) {
+			defer wg.Done()
+
+			authz, err := c.client.FetchAuthorization(c.account, authzURL)
+			if err != nil {
+				unhandledError(err)
+				return
+			}
+
+			chal, ok := authz.ChallengeMap[string(method)]
+			if !ok {
+				unhandledError(fmt.Errorf("Missing challenge method (want %v): %v", method, authz.ChallengeMap))
+				return
+			}
+
+			if _, err := c.client.UpdateChallenge(c.account, chal); err != nil {
+				probsMu.Lock()
+				if p := translateAcmeError(domain, err); p.Name != "" {
+					probs = append(probs, p)
+				}
+				probsMu.Unlock()
+			}
+		}(authzURL)
+	}
+
+	wg.Wait()
+
+	return probs, nil
+}
+
+func translateAcmeError(domain string, err error) Problem {
+	if acmeErr, ok := err.(acme.AcmeError); ok {
+		urn := strings.TrimPrefix(acmeErr.Type, "urn:ietf:params:acme:error:")
+		switch urn {
+		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa":
+			return letsencryptProblem(domain, acmeErr.Detail, SeverityError)
+		// When something bad is happening on staging
+		case "serverInternal":
+			return letsencryptProblem(domain,
+				fmt.Sprintf(`There may be internal issues on the staging service: %v`, acmeErr.Detail), SeverityWarning)
+		// Unauthorized is what we expect, except for these exceptions that we should handle:
+		// - When VA OR RA is checking Google Safe Browsing (groan)
+		case "unauthorized":
+			if strings.Contains(acmeErr.Detail, "considered an unsafe domain") {
+				return letsencryptProblem(domain, acmeErr.Detail, SeverityError)
+			}
+			return Problem{}
+		default:
+			return Problem{}
+		}
+	}
+	return internalProblem(fmt.Sprintf("An unknown issue occured when performing a test authorization "+
+		"against the Let's Encrypt staging service: %v", err), SeverityWarning)
+}
+
+func letsencryptProblem(domain, detail string, severity SeverityLevel) Problem {
+	return Problem{
+		Name: "IssueFromLetsEncrypt",
+		Explanation: fmt.Sprintf(`A test authorization for %s to the Let's Encrypt staging service has revealed `+
+			`issues that may prevent any certificate for this domain being issued.`, domain),
+		Detail:   detail,
+		Severity: severity,
 	}
 }

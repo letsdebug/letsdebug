@@ -46,6 +46,7 @@ func init() {
 		asyncCheckerBlock{
 			httpAccessibilityChecker{}, // depends on dnsAChecker
 			cloudflareChecker{},        // depends on dnsAChecker to some extent
+			&acmeStagingChecker{},      // Gets the final word
 		},
 	}
 }
