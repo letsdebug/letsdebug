@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/eggsampler/acme"
+  packages = ["."]
+  revision = "0fbde87256e6fd6e75cb701bafcca9eddaee87c9"
+
+[[projects]]
+  branch = "master"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -77,6 +83,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a4dae245e17ba14d8019f0ba8048268d4568640f8b740e7740223924023f2f2d"
+  inputs-digest = "1f6800bd77d66e65e08536c7ab947de64d2a01cf23c56466af3a3d5588de3305"
   solver-name = "gps-cdcl"
   solver-version = 1
