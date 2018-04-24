@@ -8,7 +8,12 @@
 // This package relies on libunbound.
 package letsdebug
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"reflect"
+	"time"
+)
 
 // Check will run each checker against the domain and validation method provided.
 // It is expected that this method may take a long time to execute, and may not be cancelled.
@@ -24,11 +29,15 @@ func Check(domain string, method ValidationMethod) (probs []Problem, retErr erro
 	domain = normalizeFqdn(domain)
 
 	for _, checker := range checkers {
-		if checkerProbs, err := checker.Check(ctx, domain, method); err == nil {
+		t := reflect.TypeOf(checker)
+		debug("[*] + %v\n", t)
+		start := time.Now()
+		checkerProbs, err := checker.Check(ctx, domain, method)
+		debug("[*] - %v in %v\n", t, time.Now().Sub(start))
+		if err == nil {
 			if len(checkerProbs) > 0 {
 				probs = append(probs, checkerProbs...)
 			}
-
 			// dont continue checking when a fatal error occurs
 			if hasFatalProblem(probs) {
 				break
@@ -38,4 +47,17 @@ func Check(domain string, method ValidationMethod) (probs []Problem, retErr erro
 		}
 	}
 	return probs, nil
+}
+
+var isDebug *bool
+
+func debug(format string, args ...interface{}) {
+	if isDebug == nil {
+		d := os.Getenv("LETSDEBUG_DEBUG") != ""
+		isDebug = &d
+	}
+	if !(*isDebug) {
+		return
+	}
+	fmt.Fprintf(os.Stderr, format, args...)
 }

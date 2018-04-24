@@ -1,9 +1,11 @@
 package letsdebug
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
-	"sync"
+	"reflect"
+	"time"
 )
 
 // ValidationMethod represents an ACME validation method
@@ -23,23 +25,30 @@ var (
 )
 
 func init() {
+	// We want to launch the slowest checkers as early as possible,
+	// unless they have a dependency on an earlier checker
 	checkers = []checker{
-		// show stopping checkers
-		validMethodChecker{},
-		validDomainChecker{},
-		tlssni0102DisabledChecker{},
-		wildcardDns01OnlyChecker{},
-		caaChecker{},
-
-		// others
-		dnsAChecker{},
+		asyncCheckerBlock{
+			validMethodChecker{},
+			validDomainChecker{},
+			tlssni0102DisabledChecker{},
+			wildcardDns01OnlyChecker{},
+			statusioChecker{},
+		},
 
 		asyncCheckerBlock{
-			httpAccessibilityChecker{},
-			cloudflareChecker{},
-			statusioChecker{},
-			txtRecordChecker{},
-			&rateLimitChecker{},
+			caaChecker{},        // depends on valid*Checker
+			&rateLimitChecker{}, // depends on valid*Checker
+		},
+
+		asyncCheckerBlock{
+			dnsAChecker{},      // depends on caaChecker and valid*Checker
+			txtRecordChecker{}, // depends on caaChecker and valid*Checker
+		},
+
+		asyncCheckerBlock{
+			httpAccessibilityChecker{}, // depends on dnsAChecker
+			cloudflareChecker{},        // depends on dnsAChecker to some extent
 		},
 	}
 }
@@ -51,58 +60,48 @@ type checker interface {
 // asyncCheckerBlock represents a checker which is composed of other checkers that can be run simultaneously.
 type asyncCheckerBlock []checker
 
+type asyncResult struct {
+	Problems []Problem
+	Error    error
+}
+
 func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
-	// waitgroup for all the checker goroutines
-	var wg sync.WaitGroup
-	wg.Add(len(c))
+	resultCh := make(chan asyncResult, len(c))
 
-	// error channel which either
-	// - signals either the waitgroup is done (nil error)
-	// - signals a checker has encountered an error (shortcut other checkers)
-	errChan := make(chan error, len(c))
+	id := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%d", time.Now().UnixNano()))))[:4]
+	debug("[%s] Launching async\n", id)
 
-	go func() {
-		wg.Wait()
-		errChan <- nil
-	}()
-
-	// channel to which any problems encountered in each checker are written
-	resultsChan := make(chan []Problem, len(c))
-
-	// launch each goroutine
-	for _, currentChecker := range c {
-		go func(chk checker) {
+	for _, task := range c {
+		go func(task checker, ctx *scanContext, domain string, method ValidationMethod) {
 			defer func() {
 				if r := recover(); r != nil {
-					errChan <- fmt.Errorf("panic: %v", r)
-				} else {
-					wg.Done()
+					resultCh <- asyncResult{nil, fmt.Errorf("Check paniced: %v", r)}
 				}
 			}()
-			probs, err := chk.Check(ctx, domain, method)
-			if err != nil && err != errNotApplicable {
-				errChan <- err
-				return
-			}
-			resultsChan <- probs
-		}(currentChecker)
+			t := reflect.TypeOf(task)
+			debug("[%s] async: + %v\n", id, t)
+			start := time.Now()
+			probs, err := task.Check(ctx, domain, method)
+			debug("[%s] async: - %v in %v\n", id, t, time.Now().Sub(start))
+			resultCh <- asyncResult{probs, err}
+		}(task, ctx, domain, method)
 	}
 
 	var probs []Problem
 
 	for i := 0; i < len(c); i++ {
 		select {
-		case checkerProbs := <-resultsChan:
-			// store any results
-			if len(checkerProbs) > 0 {
-				probs = append(probs, checkerProbs...)
+		case result := <-resultCh:
+			if result.Error != nil && result.Error != errNotApplicable {
+				debug("[%s] Exiting async via error\n", id, id)
+				return nil, result.Error
 			}
-
-		case err := <-errChan:
-			// short circuit exit
-			return probs, err
+			if len(result.Problems) > 0 {
+				probs = append(probs, result.Problems...)
+			}
 		}
 	}
 
+	debug("[%s] Exiting async gracefully\n", id)
 	return probs, nil
 }
