@@ -120,7 +120,6 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 		var issue []*dns.CAA
 		var issuewild []*dns.CAA
 		var criticalUnknown []*dns.CAA
-		hasIodef := false
 
 		for _, rr := range rrs {
 			caaRr, ok := rr.(*dns.CAA)
@@ -133,17 +132,11 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 				issue = append(issue, caaRr)
 			case "issuewild":
 				issuewild = append(issuewild, caaRr)
-			case "iodef":
-				hasIodef = true
 			default:
 				if caaRr.Flag == 1 {
 					criticalUnknown = append(criticalUnknown, caaRr)
 				}
 			}
-		}
-
-		if hasIodef {
-			probs = append(probs, caaIodefUnsupported())
 		}
 
 		if len(criticalUnknown) > 0 {
@@ -198,15 +191,6 @@ func collateRecords(records []*dns.CAA) string {
 		s = append(s, r.String())
 	}
 	return strings.Join(s, "\n")
-}
-
-func caaIodefUnsupported() Problem {
-	return Problem{
-		Name:        "CAAIodefUnsupported",
-		Explanation: "Let's Encrypt does not currently support 'iodef' CAA records.",
-		Detail:      "https://github.com/letsencrypt/boulder/issues/2580",
-		Severity:    SeverityWarning,
-	}
 }
 
 func caaCriticalUnknown(domain string, wildcard bool, records []*dns.CAA) Problem {
