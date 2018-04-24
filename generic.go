@@ -369,9 +369,12 @@ type rateLimitChecker struct {
 
 const rateLimitCheckerQuery = `SELECT c.ID, c.CERTIFICATE der
 FROM certificate c
-LEFT JOIN certificate_identity ci ON ci.CERTIFICATE_ID = c.id AND ci.name_type = 'dNSName'
-WHERE c.ISSUER_CA_ID IN (16418)
-AND reverse(lower(ci.NAME_VALUE)) LIKE reverse(lower($1))
+WHERE c.ID IN (
+	SELECT DISTINCT ci.CERTIFICATE_ID FROM certificate_identity ci
+	WHERE reverse(lower(ci.NAME_VALUE)) LIKE reverse(lower($1))
+	AND ci.name_type = 'dNSName'
+	AND ci.ISSUER_CA_ID IN (16418)
+)
 AND x509_notBefore(c.CERTIFICATE) >= $2
 ORDER BY x509_notBefore(c.CERTIFICATE) DESC
 OFFSET 0 LIMIT 100;
