@@ -8,14 +8,21 @@
 // This package relies on libunbound.
 package letsdebug
 
+import "fmt"
+
 // Check will run each checker against the domain and validation method provided.
 // It is expected that this method may take a long time to execute, and may not be cancelled.
-func Check(domain string, method ValidationMethod) ([]Problem, error) {
+func Check(domain string, method ValidationMethod) (probs []Problem, retErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			retErr = fmt.Errorf("panic: %v", r)
+		}
+	}()
+
 	ctx := newScanContext()
 
 	domain = normalizeFqdn(domain)
 
-	var probs []Problem
 	for _, checker := range checkers {
 		if checkerProbs, err := checker.Check(ctx, domain, method); err == nil {
 			if len(checkerProbs) > 0 {

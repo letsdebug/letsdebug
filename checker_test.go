@@ -51,7 +51,7 @@ func TestAsyncCheckerBlock_Check(t *testing.T) {
 		checkerFail{},
 	}
 	probs, err = a.Check(nil, "", "")
-	if a == nil {
+	if err == nil {
 		t.Fatal("expected error, got none")
 	}
 
@@ -60,7 +60,7 @@ func TestAsyncCheckerBlock_Check(t *testing.T) {
 		checkerPanic{},
 	}
 	probs, err = a.Check(nil, "", "")
-	if a == nil {
+	if err == nil {
 		t.Fatal("expected error, got none")
 	}
 }
