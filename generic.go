@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"net"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -373,6 +374,32 @@ func (l crtList) GetOldestCertificate() *x509.Certificate {
 	return oldest
 }
 
+// CountDuplicates counts how many duplicate certificates there are
+// that also contain the name `domain`
+func (l crtList) CountDuplicates(domain string) map[string]int {
+	counts := map[string]int{}
+
+	for _, cert := range l {
+		found := false
+		for _, name := range cert.DNSNames {
+			if name == domain {
+				found = true
+				break
+			}
+		}
+		if !found {
+			continue
+		}
+		names := make([]string, len(cert.DNSNames))
+		copy(names, cert.DNSNames)
+		sort.Strings(names)
+		k := strings.Join(names, ",")
+		counts[k]++
+	}
+
+	return counts
+}
+
 // rateLimitChecker ensures that the domain is not currently affected
 // by domain-based rate limits using crtwatch's database
 type rateLimitChecker struct {
@@ -453,15 +480,10 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 		}, nil
 	}
 
-	// No certificates issued in last 7 days
-	if len(certs) == 0 {
-		return probs, nil
-	}
-
 	// Limit: Certificates per Registered Domain
 	// TODO: implement Renewal Excemption
 	certsTowardsRateLimit := certs.FindWithCommonRegisteredDomain(registeredDomain)
-	if len(certsTowardsRateLimit) >= 20 {
+	if len(certs) > 0 && len(certsTowardsRateLimit) >= 20 {
 		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
 		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
 
@@ -472,7 +494,16 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 			registeredDomain, dropOff, dropOffDiff)))
 	}
 
-	// TODO Limit: Duplicate Certificate limit of 5 certificates per week
+	// Limit: Duplicate Certificate limit of 5 certificates per week
+	for names, dupes := range certs.CountDuplicates(domain) {
+		if dupes < 5 {
+			continue
+		}
+		probs = append(probs, rateLimited(domain,
+			fmt.Sprintf(`The Duplicate Certificate limit (5 certificates with the exact same set of domains per week) has been `+
+				`exceeded and is affecting the domain "%s". The exact set of domains affected is: "%v". It may be possible to avoid this `+
+				`rate limit by issuing a certificate with an additional or different domain name.`, domain, names)))
+	}
 
 	return probs, nil
 }
