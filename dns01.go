@@ -24,7 +24,7 @@ func (c wildcardDns01OnlyChecker) Check(ctx *scanContext, domain string, method 
 
 func wildcardHttp01(domain string, method ValidationMethod) Problem {
 	return Problem{
-		Name:        "ReservedAddress",
+		Name:        "MethodNotSuitable",
 		Explanation: fmt.Sprintf("A wildcard domain like %s can only be issued using a dns-01 validation method.", domain),
 		Detail:      fmt.Sprintf("Invalid method: %s", method),
 		Severity:    SeverityFatal,

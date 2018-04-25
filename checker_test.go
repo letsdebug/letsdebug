@@ -28,7 +28,6 @@ type checkerPanic struct{}
 
 func (c checkerPanic) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	panic("hi")
-	return nil, nil
 }
 
 func TestAsyncCheckerBlock_Check(t *testing.T) {
