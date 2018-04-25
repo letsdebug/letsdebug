@@ -133,7 +133,7 @@ func reservedAddress(name, address string) Problem {
 
 func v4v6Discrepancy(domain string, v4Result, v6Result httpCheckResult) Problem {
 	return Problem{
-		Name: "IPv6Ipv6Discrepancy",
+		Name: "IPv4IPv6Discrepancy",
 		Explanation: fmt.Sprintf(`%s has both AAAA (IPv6) and A (IPv4) records. While they both appear to be accessible on the network, `+
 			`we have detected that they produce differing results when sent an ACME HTTP validation request. This may indicate that `+
 			`the IPv4 and IPv6 addresses may unintentionally point to different servers, which would cause validation to fail.`,

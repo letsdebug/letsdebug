@@ -24,6 +24,7 @@ NoRecords, ReservedAddress | Checks that sufficient valid A/AAAA records are pre
 BadRedirect | Checks that no bad HTTP redirects are present. Discovers redirects that aren't accessible, unacceptable ports, unacceptable schemes, accidental missing trailing slash on redirect. | - |
 WebserverMisconfiguration | Checks whether the server is serving the wrong protocol on the wrong port as the result of an HTTP-01 validation request. | - |
 ANotWorking, AAAANotWorking | Checks whether listed IP addresses are not functioning properly for HTTP-01 validation, including timeouts and other classes of network and HTTP errors. | - |
+IPv4IPv6Discrepancy | For domains with both A & AAAA records, checks whether there are major discrepancies between the server responses to reveal when the addresses may be pointing to different servers accidentally.
 CloudflareCDN | Checks whether the domain is being served via Cloudflare's proxy service (and therefore SSL termination is occuring at Cloudflare) | - |
 CloudflareSSLNotProvisioned | Checks whether the domain has its SSL terminated by Cloudflare and Cloudflare has not provisioned a certificate yet (leading to a TLS handshake error). | - |
 IssueFromLetsEncrypt | Attempts to detect issues with a high degree of accuracy via the Let's Encrypt v2 staging service by attempting to perform an authorization for the domain. Discovers issues such as CA-based domain blacklists & other policies, specific networking issues. | - |
