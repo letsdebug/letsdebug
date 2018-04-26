@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alexzorin/letsdebug"
+	"github.com/letsdebug/letsdebug"
 )
 
 func main() {

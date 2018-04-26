@@ -7,7 +7,7 @@ It is motivated by [this community thread](https://community.letsencrypt.org/t/c
 ## Status/Progress
 Not yet usable.
 
-[Track the MVP milstone](https://github.com/alexzorin/letsdebug/milestone/1).
+[Track the MVP milstone](https://github.com/letsdebug/letsdebug/milestone/1).
 
 ## Problems Detected
 
@@ -51,8 +51,8 @@ You will also need Go's [dep](https://github.com/golang/dep) dependency manager.
 
 ### Building
 
-    go get -u github.com/alexzorin/letsdebug/...
-    cd $GOPATH/src/github.com/alexzorin/letsdebug
+    go get -u github.com/letsdebug/letsdebug/...
+    cd $GOPATH/src/github.com/letsdebug/letsdebug
     dep ensure
     LETSDEBUG_DEBUG=1 go run cmd/cli/cli.go -domain example.org -method http-01
 

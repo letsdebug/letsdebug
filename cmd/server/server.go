@@ -13,7 +13,7 @@ import (
 
 	"strings"
 
-	"github.com/alexzorin/letsdebug"
+	"github.com/letsdebug/letsdebug"
 )
 
 type debugRequest struct {

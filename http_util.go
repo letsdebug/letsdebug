@@ -102,7 +102,7 @@ func checkHTTP(domain string, address net.IP) (httpCheckResult, Problem) {
 	}
 
 	req.Header.Set("Accept", "*/*")
-	req.Header.Set("User-Agent", "github.com/alexzorin/letsdebug")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Let's Debug emulating Let's Encrypt validation server; +https://letsdebug.net)")
 
 	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout*time.Second)
 	defer cancel()
