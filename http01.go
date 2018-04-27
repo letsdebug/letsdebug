@@ -123,7 +123,7 @@ func noRecords(name, rrSummary string) Problem {
 func reservedAddress(name, address string) Problem {
 	return Problem{
 		Name: "ReservedAddress",
-		Explanation: fmt.Sprintf(`An IANA/IETF-reserved address was found for %s. Let's Encrypt will always fail HTTP validation `+
+		Explanation: fmt.Sprintf(`A, private, inaccessible, IANA/IETF-reserved IP address was found for %s. Let's Encrypt will always fail HTTP validation `+
 			`for any domain that is pointing to an address that is not routable on the internet. You should either remove this address `+
 			`or use the DNS validation method instead.`, name),
 		Detail:   address,
