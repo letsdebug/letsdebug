@@ -18,6 +18,7 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 	}
 
 	var probs []Problem
+	var aRRs, aaaaRRs []dns.RR
 	var aErr, aaaaErr error
 
 	var wg sync.WaitGroup
@@ -25,12 +26,12 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 
 	go func() {
 		defer wg.Done()
-		_, aaaaErr = ctx.Lookup(domain, dns.TypeAAAA)
+		aaaaRRs, aaaaErr = ctx.Lookup(domain, dns.TypeAAAA)
 	}()
 
 	go func() {
 		defer wg.Done()
-		_, aErr = ctx.Lookup(domain, dns.TypeA)
+		aRRs, aErr = ctx.Lookup(domain, dns.TypeA)
 	}()
 
 	wg.Wait()
@@ -40,6 +41,17 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 	}
 	if aaaaErr != nil {
 		probs = append(probs, dnsLookupFailed(domain, "AAAA", aaaaErr))
+	}
+
+	for _, rr := range aRRs {
+		if aRR, ok := rr.(*dns.A); ok && isAddressReserved(aRR.A) {
+			probs = append(probs, reservedAddress(domain, aRR.A.String()))
+		}
+	}
+	for _, rr := range aaaaRRs {
+		if aaaaRR, ok := rr.(*dns.AAAA); ok && isAddressReserved(aaaaRR.AAAA) {
+			probs = append(probs, reservedAddress(domain, aaaaRR.AAAA.String()))
+		}
 	}
 
 	return probs, nil
@@ -87,10 +99,6 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 	var v6Res httpCheckResult
 
 	for _, ip := range ips {
-		if isAddressReserved(ip) {
-			probs = append(probs, reservedAddress(domain, ip.String()))
-			continue
-		}
 		res, prob := checkHTTP(domain, ip)
 		if !prob.IsZero() {
 			probs = append(probs, prob)
@@ -125,9 +133,9 @@ func reservedAddress(name, address string) Problem {
 		Name: "ReservedAddress",
 		Explanation: fmt.Sprintf(`A, private, inaccessible, IANA/IETF-reserved IP address was found for %s. Let's Encrypt will always fail HTTP validation `+
 			`for any domain that is pointing to an address that is not routable on the internet. You should either remove this address `+
-			`or use the DNS validation method instead.`, name),
+			`and replace it with a public one or use the DNS validation method instead.`, name),
 		Detail:   address,
-		Severity: SeverityError,
+		Severity: SeverityFatal,
 	}
 }
 
