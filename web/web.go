@@ -5,7 +5,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"net"
@@ -15,6 +17,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/net/idna"
+)
+
+var (
+	regexDNSName = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
 )
 
 type server struct {
@@ -60,12 +67,18 @@ func Serve() error {
 	// - New Test (both browser and API)
 	r.Post("/", s.httpSubmitTest)
 	// - View test results (or test loading page)
-	// r.Get("/{domain}/{testID}", s.httpHome)
+	r.Get("/{domain}/{testID}", s.httpViewTestResult)
 	// - View all tests for domain
-	// r.Get("/{domain}", s.httpHome)
+	r.Get("/{domain}", s.httpViewDomain)
 
 	log.Printf("Starting web server ...")
 	return http.ListenAndServe(envOrDefault("LISTEN_ADDR", "127.0.0.1:9150"), r)
+}
+
+func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
+}
+
+func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
@@ -107,9 +120,25 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Test case: entering https://短.co/home should work, at least for browser visitors
+
+	// Try parse as URL in case somebody tried to paste a URL
+	if isBrowser && (strings.HasPrefix(domain, "http:") || strings.HasPrefix(domain, "https:")) {
+		asURL, err := url.Parse(domain)
+		if err == nil {
+			domain = asURL.Hostname()
+		}
+	}
+
+	// If the domain is punycode, coerse it to ascii
+	asASCII, err := idna.ToASCII(domain)
+	if err == nil {
+		domain = asASCII
+	}
+
 	domain = strings.ToLower(strings.TrimSpace(domain))
-	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 {
-		doError("Please provide a valid domain name and validation method", http.StatusBadRequest)
+	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 || !regexDNSName.MatchString(domain) {
+		doError("Please provide a valid domain name and validation method.", http.StatusBadRequest)
 		return
 	}
 
@@ -123,7 +152,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isBrowser {
-		http.Redirect(w, r, fmt.Sprintf("/%s/%d", domain, id), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, fmt.Sprintf("/%s/%d", domain, id), http.StatusFound)
 		return
 	}
 
