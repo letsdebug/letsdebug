@@ -53,7 +53,14 @@ func checkHTTP(domain string, address net.IP) (httpCheckResult, Problem) {
 	cl := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				_, port, _ := net.SplitHostPort(addr)
+				host, port, _ := net.SplitHostPort(addr)
+
+				// Only override the address for this specific domain.
+				// We don't want to mangle redirects.
+				if host != domain {
+					return dialer.DialContext(ctx, network, addr)
+				}
+
 				if address.To4() == nil {
 					return dialer.DialContext(ctx, "tcp", "["+address.String()+"]:"+port)
 				}
