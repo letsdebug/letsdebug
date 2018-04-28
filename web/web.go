@@ -3,10 +3,11 @@ package web
 import (
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -64,10 +65,31 @@ func Serve() error {
 	return http.ListenAndServe(envOrDefault("LISTEN_ADDR", "127.0.0.1:9150"), r)
 }
 
+func (s *server) httpSubmitTestBrowser(w http.ResponseWriter, r *http.Request) {
+	domain := strings.ToLower(strings.TrimSpace(r.PostFormValue("domain")))
+	method := r.PostFormValue("method")
+
+	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 {
+		http.Redirect(w, r, "/?error=bad-input", 302)
+		return
+	}
+
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+
+	id, err := s.createNewTest(domain, method, ip)
+	if err != nil {
+		fmt.Printf("Failed to create test for %s/%s: %v\n", domain, method, err)
+		http.Redirect(w, r, "/?error=internal", 302)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/%s/%d", domain, id), http.StatusTemporaryRedirect)
+}
+
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	switch r.Header.Get("content-type") {
 	case "application/x-www-form-urlencoded":
-		http.Redirect(w, r, fmt.Sprintf("/%s/%d", r.PostFormValue("domain"), time.Now().UnixNano()), 302)
+		s.httpSubmitTestBrowser(w, r)
 	case "application/json":
 		http.Error(w, "Not yet implemented", http.StatusNotImplemented)
 	default:

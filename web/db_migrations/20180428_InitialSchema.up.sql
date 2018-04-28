@@ -2,7 +2,6 @@ CREATE TYPE test_status AS ENUM ('Queued', 'Processing', 'Complete');
 
 CREATE TABLE tests (
   id SERIAL PRIMARY KEY,
-  slug TEXT NOT NULL,
   domain TEXT NOT NULL,
   method TEXT NOT NULL,
   status test_status NOT NULL,
@@ -13,5 +12,5 @@ CREATE TABLE tests (
   result jsonb
 );
 
-CREATE INDEX tests_domain_slug ON tests (slug);
+CREATE INDEX tests_lookup_idx ON tests (id, domain);
 CREATE INDEX tests_domain_idx ON tests (domain);

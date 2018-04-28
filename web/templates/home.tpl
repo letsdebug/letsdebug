@@ -37,11 +37,15 @@ fieldset {
      common website misconfigurations.</p>
   </section>
 
+  {{ if .Error }}
+  <section class="error">{{ .Error }}</section>
+  {{ end }}
+
   <section class="form">
     <p>Enter the domain and validation method you are having trouble issuing a certificate with. <small>(Choose HTTP-01 if unsure)</small>.</p>
     <form action="/test" method="POST">
       <fieldset>
-        <input type="text" autofocus tabindex="1" class="domain" name="domain" placeholder="example.org">
+        <input type="text" autofocus tabindex="1" class="domain" name="domain" placeholder="example.org" required>
         <select name="method" tabindex="2" class="validation-method">
           <option value="http-01">HTTP-01</option>
           <option value="dns-01">DNS-01</option>
