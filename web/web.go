@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	regexDNSName = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
+	regexDNSName = regexp.MustCompile(`^[\w\-.]+$`) // Very basic test, further validation later
 )
 
 type server struct {
