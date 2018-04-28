@@ -57,7 +57,7 @@ func checkHTTP(domain string, address net.IP) (httpCheckResult, Problem) {
 
 				// Only override the address for this specific domain.
 				// We don't want to mangle redirects.
-				if host != domain {
+				if normalizeFqdn(host) != domain {
 					return dialer.DialContext(ctx, network, addr)
 				}
 
