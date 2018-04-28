@@ -34,7 +34,6 @@
       color: #2c3c69;
     }
     .error {
-      border: 1px solid darkred;
       background-color: rgba(255, 0, 0, 0.25);
       color: darkred;
       border-radius: 4px;

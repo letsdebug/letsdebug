@@ -58,7 +58,7 @@ func Serve() error {
 	// - Home Page
 	r.Get("/", s.httpHome)
 	// - New Test (both browser and API)
-	r.Post("/test", s.httpSubmitTest)
+	r.Post("/", s.httpSubmitTest)
 	// - View test results (or test loading page)
 	// r.Get("/{domain}/{testID}", s.httpHome)
 	// - View all tests for domain
@@ -70,10 +70,11 @@ func Serve() error {
 
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	var domain, method string
-	browser := true
+
+	isBrowser := true
 
 	doError := func(msg string, code int) {
-		if !browser {
+		if !isBrowser {
 			http.Error(w, msg, code)
 			return
 		}
@@ -89,14 +90,14 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		domain = r.PostFormValue("domain")
 		method = r.PostFormValue("method")
 	case "application/json":
-		browser = false
-		testRequest := struct {
+		isBrowser = false
+		var testRequest struct {
 			Domain string `json:"domain"`
 			Method string `json:"method"`
-		}{}
+		}
 		if err := json.NewDecoder(r.Body).Decode(&testRequest); err != nil {
 			log.Printf("Error decoding request: %v", err)
-			doError(http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			doError("Request body was not valid JSON", http.StatusBadRequest)
 			return
 		}
 		domain = testRequest.Domain
@@ -108,7 +109,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 {
-		doError("Bad input domain or method", http.StatusBadRequest)
+		doError("Please provide a valid domain name and validation method", http.StatusBadRequest)
 		return
 	}
 
@@ -121,14 +122,14 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if browser {
+	if isBrowser {
 		http.Redirect(w, r, fmt.Sprintf("/%s/%d", domain, id), http.StatusTemporaryRedirect)
 		return
 	}
 
 	testResponse := struct {
 		Domain string `json:"domain"`
-		Id     uint64 `json:"id"`
+		ID     uint64 `json:"id"`
 	}{domain, id}
 	if err := json.NewEncoder(w).Encode(&testResponse); err != nil {
 		log.Printf("Error encoding response: %v", err)

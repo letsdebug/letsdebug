@@ -43,7 +43,7 @@ fieldset {
 
   <section class="form">
     <p>Enter the domain and validation method you are having trouble issuing a certificate with. <small>(Choose HTTP-01 if unsure)</small>.</p>
-    <form action="/test" method="POST">
+    <form action="/" method="POST">
       <fieldset>
         <input type="text" autofocus tabindex="1" class="domain" name="domain" placeholder="example.org" required>
         <select name="method" tabindex="2" class="validation-method">
