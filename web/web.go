@@ -3,11 +3,14 @@ package web
 import (
 	"fmt"
 	"html/template"
-	"net"
+	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
+
+	"net"
+
+	"encoding/json"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -36,13 +39,13 @@ func Serve() error {
 	}
 	s.db = db
 	// and update the schema
-	fmt.Println("Running migrations ...")
+	log.Printf("Running migrations ...")
 	if err := s.migrateUp(); err != nil {
 		return err
 	}
 
 	// Load templates
-	fmt.Println("Loading templates ...")
+	log.Printf("Loading templates ...")
 	s.tpl = template.New("")
 	names, _ := AssetDir("templates")
 	for _, tpl := range names {
@@ -61,16 +64,51 @@ func Serve() error {
 	// - View all tests for domain
 	// r.Get("/{domain}", s.httpHome)
 
-	fmt.Println("Starting web server ...")
+	log.Printf("Starting web server ...")
 	return http.ListenAndServe(envOrDefault("LISTEN_ADDR", "127.0.0.1:9150"), r)
 }
 
-func (s *server) httpSubmitTestBrowser(w http.ResponseWriter, r *http.Request) {
-	domain := strings.ToLower(strings.TrimSpace(r.PostFormValue("domain")))
-	method := r.PostFormValue("method")
+func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
+	var domain, method string
+	browser := true
 
+	doError := func(msg string, code int) {
+		if !browser {
+			http.Error(w, msg, code)
+			return
+		}
+		if err := s.tpl.ExecuteTemplate(w, "home.tpl", map[string]interface{}{
+			"Error": msg,
+		}); err != nil {
+			log.Printf("Error executing home template with error: %v", err)
+		}
+	}
+
+	switch r.Header.Get("content-type") {
+	case "application/x-www-form-urlencoded":
+		domain = r.PostFormValue("domain")
+		method = r.PostFormValue("method")
+	case "application/json":
+		browser = false
+		testRequest := struct {
+			Domain string `json:"domain"`
+			Method string `json:"method"`
+		}{}
+		if err := json.NewDecoder(r.Body).Decode(&testRequest); err != nil {
+			log.Printf("Error decoding request: %v", err)
+			doError(http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		domain = testRequest.Domain
+		method = testRequest.Method
+	default:
+		doError(http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	domain = strings.ToLower(strings.TrimSpace(domain))
 	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 {
-		http.Redirect(w, r, "/?error=bad-input", 302)
+		doError("Bad input domain or method", http.StatusBadRequest)
 		return
 	}
 
@@ -78,40 +116,33 @@ func (s *server) httpSubmitTestBrowser(w http.ResponseWriter, r *http.Request) {
 
 	id, err := s.createNewTest(domain, method, ip)
 	if err != nil {
-		fmt.Printf("Failed to create test for %s/%s: %v\n", domain, method, err)
-		http.Redirect(w, r, "/?error=internal", 302)
+		log.Printf("Failed to create test for %s/%s: %v\n", domain, method, err)
+		doError(http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/%s/%d", domain, id), http.StatusTemporaryRedirect)
-}
+	if browser {
+		http.Redirect(w, r, fmt.Sprintf("/%s/%d", domain, id), http.StatusTemporaryRedirect)
+		return
+	}
 
-func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
-	switch r.Header.Get("content-type") {
-	case "application/x-www-form-urlencoded":
-		s.httpSubmitTestBrowser(w, r)
-	case "application/json":
-		http.Error(w, "Not yet implemented", http.StatusNotImplemented)
-	default:
-		http.Error(w, "Expected content-types not found", http.StatusBadRequest)
+	testResponse := struct {
+		Domain string `json:"domain"`
+		Id     uint64 `json:"id"`
+	}{domain, id}
+	if err := json.NewEncoder(w).Encode(&testResponse); err != nil {
+		log.Printf("Error encoding response: %v", err)
 	}
 }
 
 func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
 	if err := s.tpl.ExecuteTemplate(w, "home.tpl", nil); err != nil {
-		fmt.Println(err)
+		log.Printf("Error executing home template: %v", err)
 	}
 }
 
 func envOrDefault(key, fallback string) string {
 	if v := os.Getenv("LETSDEBUG_WEB_" + key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func envIntOrDefault(key string, fallback uint64) uint64 {
-	if v, err := strconv.ParseUint(envOrDefault(key, ""), 10, 64); err != nil {
 		return v
 	}
 	return fallback
