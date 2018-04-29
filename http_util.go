@@ -50,9 +50,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 	}
 
 	var redirErr redirectError
-	dialStack := []string{
-		fmt.Sprintf("> Making request to %s/%s", domain, address.String()),
-	}
+	dialStack := []string{}
 
 	cl := http.Client{
 		Transport: &http.Transport{
@@ -121,7 +119,10 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 		},
 	}
 
-	req, err := http.NewRequest("GET", "http://"+domain+"/.well-known/acme-challenge/letsdebug-test", nil)
+	reqURL := "http://" + domain + "/.well-known/acme-challenge/letsdebug-test"
+	dialStack = append(dialStack, fmt.Sprintf("> Making a request to %s (using initial IP %s)", reqURL, address))
+
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return checkRes, internalProblem(fmt.Sprintf("Failed to construct validation request: %v", err), SeverityError)
 	}
@@ -153,7 +154,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 
 func translateHTTPError(domain string, address net.IP, e error, dialStack []string) Problem {
 	if redirErr, ok := e.(redirectError); ok {
-		return badRedirect(domain, redirErr)
+		return badRedirect(domain, redirErr, dialStack)
 	}
 
 	if strings.HasSuffix(e.Error(), "http: server gave HTTP response to HTTPS client") {
@@ -163,8 +164,8 @@ func translateHTTPError(domain string, address net.IP, e error, dialStack []stri
 
 	// Make a nicer error message if it was a context timeout
 	if urlErr, ok := e.(*url.Error); ok && urlErr.Timeout() {
-		e = fmt.Errorf("A timeout was experienced while communicating with %s/%s: %v\n\n%s",
-			domain, address.String(), urlErr, strings.Join(dialStack, "\n"))
+		e = fmt.Errorf("A timeout was experienced while communicating with %s/%s: %v",
+			domain, address.String(), urlErr)
 	}
 
 	if address.To4() == nil {
@@ -205,13 +206,13 @@ func aNotWorking(domain, addr string, err error, dialStack []string) Problem {
 	}
 }
 
-func badRedirect(domain string, err error) Problem {
+func badRedirect(domain string, err error, dialStack []string) Problem {
 	return Problem{
 		Name: "BadRedirect",
 		Explanation: fmt.Sprintf(`Sending an ACME HTTP validation request to %s results in an unacceptable redirect. `+
 			`This is most likely a misconfiguration of your web server or your web application.`,
 			domain),
-		Detail:   err.Error(),
+		Detail:   fmt.Sprintf("%s\n\nTrace:\n%s", err.Error(), strings.Join(dialStack, "\n")),
 		Severity: SeverityError,
 	}
 }
