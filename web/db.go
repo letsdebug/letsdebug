@@ -216,7 +216,7 @@ func runChecks(domain, method string) resultView {
 		return r
 
 	case <-time.After(60 * time.Second):
-		return resultView{"timeout", nil}
+		return resultView{"Test time exceeded 60 seconds, please try again soon.", nil}
 	}
 }
 
