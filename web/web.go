@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"net"
@@ -88,8 +89,42 @@ func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
-	s.templates["results.tpl"].Execute(w, map[string]interface{}{})
+	domain := chi.URLParam(r, "domain")
+	testID, err := strconv.Atoi(chi.URLParam(r, "testID"))
+
+	if domain == "" || err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		s.templates["results.tpl"].Execute(w, map[string]interface{}{
+			"Error": "Invalid request parameters.",
+		})
+		return
+	}
+
+	test, err := s.findTest(domain, testID)
+	if err != nil {
+		log.Printf("fetching %s/%d: %v", domain, testID, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		s.templates["results.tpl"].Execute(w, map[string]interface{}{
+			"Error": "An internal error occured fetching that test.",
+		})
+		return
+	}
+
+	if test == nil {
+		w.WriteHeader(http.StatusNotFound)
+		s.templates["results.tpl"].Execute(w, map[string]interface{}{
+			"Error": "No such test result exists.",
+		})
+		return
+	}
+
+	if test.Status != "Complete" {
+		w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
+	}
+
+	s.templates["results.tpl"].Execute(w, map[string]interface{}{
+		"Test": test,
+	})
 }
 
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {

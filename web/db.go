@@ -1,6 +1,7 @@
 package web
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/golang-migrate/migrate"
@@ -9,15 +10,15 @@ import (
 )
 
 type test struct {
-	ID            uint64    `db:"id,omitempty"`
-	Domain        string    `db:"domain,omitempty"`
-	Method        string    `db:"method,omitempty"`
-	Status        string    `db:"status,omitempty"`
-	CreatedAt     time.Time `db:"created_at,omitempty"`
-	StartedAt     time.Time `db:"started_at,omitempty"`
-	CompletedAt   time.Time `db:"completed_at,omitempty"`
-	SubmittedByIP string    `db:"submitted_by_ip,omitempty"`
-	Result        string    `db:"result,omitempty"`
+	ID            uint64     `db:"id,omitempty"`
+	Domain        string     `db:"domain,omitempty"`
+	Method        string     `db:"method,omitempty"`
+	Status        string     `db:"status,omitempty"`
+	CreatedAt     time.Time  `db:"created_at,omitempty"`
+	StartedAt     *time.Time `db:"started_at,omitempty"`
+	CompletedAt   *time.Time `db:"completed_at,omitempty"`
+	SubmittedByIP string     `db:"submitted_by_ip,omitempty" json:"-"`
+	Result        *string    `db:"result,omitempty"`
 }
 
 func (s *server) migrateUp() error {
@@ -54,4 +55,16 @@ func (s *server) createNewTest(domain, method, ip string) (uint64, error) {
 		return 0, err
 	}
 	return newID, nil
+}
+
+func (s *server) findTest(domain string, id int) (*test, error) {
+	var t test
+	if err := s.db.Get(&t, "SELECT * FROM tests WHERE id = $1 and domain = $2;", id, domain); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &t, nil
 }
