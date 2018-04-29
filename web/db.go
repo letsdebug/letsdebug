@@ -3,14 +3,18 @@ package web
 import (
 	"database/sql"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/lib/pq"
 
+	"encoding/json"
+
+	"os"
+
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	"github.com/golang-migrate/migrate/source/go-bindata"
+	"github.com/letsdebug/letsdebug"
 )
 
 type test struct {
@@ -85,14 +89,53 @@ func (s *server) listenForTests(dsn string) error {
 		return err
 	}
 
-	for n := range listener.Notify {
-		testID, err := strconv.Atoi(n.Extra)
-		if err != nil {
-			log.Printf("Notify gave bad testID: %v", err)
-			continue
-		}
+	for {
+		select {
+		case n := <-listener.Notify:
+			if n == nil {
+				// can be nil notifications sent during reconnections
+				continue
+			}
 
-		log.Printf("Queuing up test %d", testID)
+			notification := struct {
+				Id     int    `json:"id"`
+				Domain string `json:"domain"`
+				Method string `json:"method"`
+			}{}
+
+			if err := json.Unmarshal([]byte(n.Extra), &notification); err != nil {
+				log.Printf("Error unmarshalling notification: %v (%s)", err, n.Extra)
+				continue
+			}
+
+			log.Printf("Starting test: %+v", notification)
+
+			s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, notification.Id)
+
+			os.Setenv("LETSDEBUG_DISABLE_CERTWATCH", "1")
+			os.Setenv("LETSDEBUG_DISABLE_ACMESTAGING", "1")
+			probs, err := letsdebug.Check(notification.Domain, letsdebug.ValidationMethod(notification.Method))
+			if err != nil {
+				log.Printf("Error in test %d, %v", notification.Id, err)
+				s.db.Exec(`UPDATE tests SET completed_at = CURRENT_TIMESTAMP, status = 'Complete', result = $2 WHERE id = $1;`,
+					notification.Id, err.Error())
+				continue
+			}
+
+			result, _ := json.Marshal(probs)
+
+			if _, err := s.db.Exec(`UPDATE tests SET completed_at = CURRENT_TIMESTAMP, status = 'Complete', result = $2 WHERE id = $1;`,
+				notification.Id, string(result)); err != nil {
+				log.Printf("Error storing test %d result: %v", notification.Id, err)
+				continue
+			}
+
+			log.Printf("Test %d complete", notification.Id)
+
+		case <-time.After(5 * time.Minute):
+			go listener.Ping()
+		}
 	}
+
 	return nil
 }

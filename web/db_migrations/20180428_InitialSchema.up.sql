@@ -16,8 +16,14 @@ CREATE INDEX tests_lookup_idx ON tests (id, domain);
 CREATE INDEX tests_domain_idx ON tests (domain);
 
 CREATE FUNCTION notify_tests() RETURNS TRIGGER AS $$
+DECLARE
+  notification json;
 BEGIN
-  PERFORM pg_notify('tests_events', NEW.id::text);
+  notification = json_build_object(
+    'id', NEW.id,
+    'domain', NEW.domain,
+    'method', NEW.method);
+  PERFORM pg_notify('tests_events', notification::text);
   return NULL;
 END;
 $$ LANGUAGE plpgsql;
