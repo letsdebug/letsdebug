@@ -2,6 +2,7 @@ package letsdebug
 
 import (
 	"fmt"
+	"strings"
 )
 
 // SeverityLevel represents the priority of a reported problem
@@ -29,6 +30,10 @@ func (p Problem) String() string {
 
 func (p Problem) IsZero() bool {
 	return p.Name == ""
+}
+
+func (p Problem) DetailLines() []string {
+	return strings.Split(p.Detail, "\n")
 }
 
 func hasFatalProblem(probs []Problem) bool {

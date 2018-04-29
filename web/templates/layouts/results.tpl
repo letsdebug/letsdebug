@@ -98,7 +98,9 @@
           <div class="problem-severity">{{ $problem.Severity }}</div>    
       </div>
       <div class="problem-description">{{ $problem.Explanation }} </div>
-      <div class="problem-detail">{{ $problem.Detail }} </div>
+      <div class="problem-detail">
+        {{ range $dIndex, $detail := $problem.DetailLines }}{{ $detail }} <br/>{{ end }}
+      </div>
     </div>
     {{ end }}
   </section>
@@ -106,7 +108,7 @@
   <section class="description">
     <p class="times">Submitted <abbr title="{{ .Test.CreatedAt }}">{{ .Test.SubmitTime }} ago</abbr>.
     {{ if .Test.QueueDuration }}Sat in queue for {{ .Test.QueueDuration }}.{{ end }}
-    {{ if .Test.TestDuration }}Completed in {{ .Test.TestDuration }}.{{ end }}</small>
+    {{ if .Test.TestDuration }}Completed in {{ .Test.TestDuration }}.{{ end }}</p>
   </section>        
   {{ end }}
 </div>

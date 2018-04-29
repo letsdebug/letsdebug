@@ -48,7 +48,11 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 	checkRes := httpCheckResult{
 		IP: address,
 	}
+
 	var redirErr redirectError
+	dialStack := []string{
+		fmt.Sprintf("> Making request to %s/%s", domain, address.String()),
+	}
 
 	cl := http.Client{
 		Transport: &http.Transport{
@@ -57,6 +61,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 				host = normalizeFqdn(host)
 
 				dialFunc := func(ip net.IP, port string) (net.Conn, error) {
+					dialStack = append(dialStack, fmt.Sprintf("> Dialing %s", ip.String()))
 					if ip.To4() == nil {
 						return dialer.DialContext(ctx, "tcp", "["+ip.String()+"]:"+port)
 					}
@@ -87,6 +92,8 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 				redirErr = redirectError(fmt.Sprintf("Too many (%d) redirects, last redirect was to: %s", len(via), req.URL.String()))
 				return redirErr
 			}
+
+			dialStack = append(dialStack, fmt.Sprintf("> Received redirect to %s", req.URL.String()))
 
 			host := req.URL.Host
 			if _, p, err := net.SplitHostPort(host); err == nil {
@@ -136,7 +143,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 		if redirErr != "" {
 			err = redirErr
 		}
-		return checkRes, translateHTTPError(domain, address, err)
+		return checkRes, translateHTTPError(domain, address, err, dialStack)
 	}
 
 	defer resp.Body.Close()
@@ -144,25 +151,26 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 	return checkRes, Problem{}
 }
 
-func translateHTTPError(domain string, address net.IP, e error) Problem {
+func translateHTTPError(domain string, address net.IP, e error, dialStack []string) Problem {
 	if redirErr, ok := e.(redirectError); ok {
 		return badRedirect(domain, redirErr)
 	}
 
 	if strings.HasSuffix(e.Error(), "http: server gave HTTP response to HTTPS client") {
 		return httpServerMisconfiguration(domain, "Web server is serving the wrong protocol on the wrong port: "+e.Error()+
-			". This may be due to a previous HTTP redirect rather than a webserver misconfiguration.")
+			". This may be due to a previous HTTP redirect rather than a webserver misconfiguration.\n\nTrace:\n"+strings.Join(dialStack, "\n"))
 	}
 
 	// Make a nicer error message if it was a context timeout
 	if urlErr, ok := e.(*url.Error); ok && urlErr.Timeout() {
-		e = fmt.Errorf("A timeout was experienced while communicating with %s/%s: %v", domain, address.String(), urlErr)
+		e = fmt.Errorf("A timeout was experienced while communicating with %s/%s: %v\n\n%s",
+			domain, address.String(), urlErr, strings.Join(dialStack, "\n"))
 	}
 
 	if address.To4() == nil {
-		return aaaaNotWorking(domain, address.String(), e)
+		return aaaaNotWorking(domain, address.String(), e, dialStack)
 	} else {
-		return aNotWorking(domain, address.String(), e)
+		return aNotWorking(domain, address.String(), e, dialStack)
 	}
 }
 
@@ -175,24 +183,24 @@ func httpServerMisconfiguration(domain, detail string) Problem {
 	}
 }
 
-func aaaaNotWorking(domain, ipv6Address string, err error) Problem {
+func aaaaNotWorking(domain, ipv6Address string, err error, dialStack []string) Problem {
 	return Problem{
 		Name: "AAAANotWorking",
-		Explanation: fmt.Sprintf(`%s has an AAAA (IPv6) record (%s) but a test ACME validation request over port 80 has revealed problems. `+
+		Explanation: fmt.Sprintf(`%s has an AAAA (IPv6) record (%s) but a test request to this domain over port 80 did not succeed. `+
 			`Let's Encrypt will prefer to use AAAA records, if present, and will not fall back to IPv4 records. `+
-			`You should either ensure that validation requests succeed over IPv6, or remove its AAAA record.`,
+			`You should either ensure that validation requests to this domain succeed over IPv6, or remove its AAAA record.`,
 			domain, ipv6Address),
-		Detail:   err.Error(),
+		Detail:   fmt.Sprintf("%s\n\nTrace:\n%s", err.Error(), strings.Join(dialStack, "\n")),
 		Severity: SeverityError,
 	}
 }
 
-func aNotWorking(domain, addr string, err error) Problem {
+func aNotWorking(domain, addr string, err error, dialStack []string) Problem {
 	return Problem{
 		Name: "ANotWorking",
-		Explanation: fmt.Sprintf(`%s has an A (IPv4) record (%s) but a test ACME validation request over port 80 has revealed problems.`,
+		Explanation: fmt.Sprintf(`%s has an A (IPv4) record (%s) but a request to this domain over port 80 did not succeed.`,
 			domain, addr),
-		Detail:   err.Error(),
+		Detail:   fmt.Sprintf("%s\n\nTrace:\n%s", err.Error(), strings.Join(dialStack, "\n")),
 		Severity: SeverityError,
 	}
 }
