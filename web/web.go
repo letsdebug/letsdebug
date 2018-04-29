@@ -41,7 +41,8 @@ func Serve() error {
 	r.Use(middleware.RealIP)
 
 	// Bring up the database
-	db, err := sqlx.Open(envOrDefault("DB_DRIVER", "postgres"), envOrDefault("DB_DSN", ""))
+	dsn := envOrDefault("DB_DSN", "")
+	db, err := sqlx.Open(envOrDefault("DB_DRIVER", "postgres"), dsn)
 	if err != nil {
 		return err
 	}
@@ -51,6 +52,13 @@ func Serve() error {
 	if err := s.migrateUp(); err != nil {
 		return err
 	}
+
+	// Listen for test inserts
+	go func() {
+		if err := s.listenForTests(dsn); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	// Load templates
 	log.Printf("Loading templates ...")
@@ -93,27 +101,23 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 	testID, err := strconv.Atoi(chi.URLParam(r, "testID"))
 
 	if domain == "" || err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		s.templates["results.tpl"].Execute(w, map[string]interface{}{
+		s.render(w, http.StatusBadRequest, "results.tpl", map[string]interface{}{
 			"Error": "Invalid request parameters.",
 		})
-		return
 	}
 
 	test, err := s.findTest(domain, testID)
 	if err != nil {
 		log.Printf("fetching %s/%d: %v", domain, testID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		s.templates["results.tpl"].Execute(w, map[string]interface{}{
+		s.render(w, http.StatusInternalServerError, "results.tpl", map[string]interface{}{
 			"Error": "An internal error occured fetching that test.",
 		})
 		return
 	}
 
 	if test == nil {
-		w.WriteHeader(http.StatusNotFound)
-		s.templates["results.tpl"].Execute(w, map[string]interface{}{
-			"Error": "No such test result exists.",
+		s.render(w, http.StatusNotFound, "results.tpl", map[string]interface{}{
+			"Error": "No such result exists.",
 		})
 		return
 	}
@@ -122,7 +126,7 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
 	}
 
-	s.templates["results.tpl"].Execute(w, map[string]interface{}{
+	s.render(w, http.StatusOK, "results.tpl", map[string]interface{}{
 		"Test": test,
 	})
 }
@@ -212,8 +216,20 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
-	if err := s.templates["home.tpl"].Execute(w, nil); err != nil {
-		log.Printf("Error executing home template: %v", err)
+	s.render(w, http.StatusOK, "home.tpl", nil)
+}
+
+func (s *server) render(w http.ResponseWriter, statusCode int, templateName string, data interface{}) {
+	tpl, ok := s.templates[templateName]
+	if !ok {
+		http.Error(w, "An internal rendering error occured.", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(statusCode)
+	if err := tpl.Execute(w, data); err != nil {
+		log.Printf("Error executing %s template with error: %v", templateName, err)
+		http.Error(w, "An internal rendering error occured.", http.StatusInternalServerError)
 	}
 }
 

@@ -2,7 +2,11 @@ package web
 
 import (
 	"database/sql"
+	"log"
+	"strconv"
 	"time"
+
+	"github.com/lib/pq"
 
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
@@ -67,4 +71,28 @@ func (s *server) findTest(domain string, id int) (*test, error) {
 	}
 
 	return &t, nil
+}
+
+func (s *server) listenForTests(dsn string) error {
+	problemFunc := func(e pq.ListenerEventType, err error) {
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	listener := pq.NewListener(dsn, 10*time.Second, time.Minute, problemFunc)
+	if err := listener.Listen("tests_events"); err != nil {
+		return err
+	}
+
+	for n := range listener.Notify {
+		testID, err := strconv.Atoi(n.Extra)
+		if err != nil {
+			log.Printf("Notify gave bad testID: %v", err)
+			continue
+		}
+
+		log.Printf("Queuing up test %d", testID)
+	}
+	return nil
 }

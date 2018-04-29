@@ -14,3 +14,12 @@ CREATE TABLE tests (
 
 CREATE INDEX tests_lookup_idx ON tests (id, domain);
 CREATE INDEX tests_domain_idx ON tests (domain);
+
+CREATE FUNCTION notify_tests() RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM pg_notify('tests_events', NEW.id::text);
+  return NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tests_insert_event AFTER INSERT ON tests FOR EACH ROW EXECUTE PROCEDURE notify_tests();
