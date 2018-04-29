@@ -57,8 +57,6 @@ func Serve() error {
 	names, _ := AssetDir("templates/layouts")
 	includes, _ := AssetDir("templates/includes")
 
-	fmt.Println(names, includes)
-
 	for _, tplName := range names {
 		tpl := template.New(tplName)
 		for _, incName := range includes {
@@ -71,7 +69,6 @@ func Serve() error {
 		}
 		s.templates[tplName] = tpl
 	}
-	fmt.Printf("%+v", s.templates)
 
 	// Routes
 	// - Home Page
