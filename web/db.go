@@ -199,17 +199,16 @@ func (s *server) listenForTests(dsn string) error {
 	}
 }
 
-type dbResult struct {
-	Problems []letsdebug.Problem `json:"problems"`
-	Error    error               `json:"error"`
-}
-
-func runChecks(domain, method string) dbResult {
-	resultCh := make(chan dbResult)
+func runChecks(domain, method string) resultView {
+	resultCh := make(chan resultView)
 
 	go func() {
 		probs, err := letsdebug.Check(domain, letsdebug.ValidationMethod(method))
-		resultCh <- dbResult{probs, err}
+		if err != nil {
+			resultCh <- resultView{err.Error(), probs}
+			return
+		}
+		resultCh <- resultView{"", probs}
 	}()
 
 	select {
@@ -217,7 +216,7 @@ func runChecks(domain, method string) dbResult {
 		return r
 
 	case <-time.After(60 * time.Second):
-		return dbResult{nil, errors.New("timeout")}
+		return resultView{"timeout", nil}
 	}
 }
 
