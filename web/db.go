@@ -53,8 +53,8 @@ func (probs problems) Less(i, j int) bool {
 }
 
 type resultView struct {
-	Error    string
-	Problems problems
+	Error    string   `json:"error,omitempty"`
+	Problems problems `json:"problems,omitempty"`
 }
 
 func (rv *resultView) Scan(src interface{}) error {
@@ -70,15 +70,15 @@ func (rv *resultView) Scan(src interface{}) error {
 }
 
 type testView struct {
-	ID            uint64      `db:"id,omitempty"`
-	Domain        string      `db:"domain,omitempty"`
-	Method        string      `db:"method,omitempty"`
-	Status        string      `db:"status,omitempty"`
-	CreatedAt     time.Time   `db:"created_at,omitempty"`
-	StartedAt     *time.Time  `db:"started_at,omitempty"`
-	CompletedAt   *time.Time  `db:"completed_at,omitempty"`
+	ID            uint64      `db:"id,omitempty" json:"id,omitempty"`
+	Domain        string      `db:"domain,omitempty" json:"domain,omitempty"`
+	Method        string      `db:"method,omitempty" json:"method,omitempty"`
+	Status        string      `db:"status,omitempty" json:"status,omitempty"`
+	CreatedAt     time.Time   `db:"created_at,omitempty" json:"created_at,omitempty"`
+	StartedAt     *time.Time  `db:"started_at,omitempty" json:"started_at,omitempty"`
+	CompletedAt   *time.Time  `db:"completed_at,omitempty" json:"completed_at,omitempty"`
 	SubmittedByIP string      `db:"submitted_by_ip,omitempty" json:"-"`
-	Result        *resultView `db:"result,omitempty"`
+	Result        *resultView `db:"result,omitempty" json:"result,omitempty"`
 }
 
 func (t testView) QueueDuration() string {

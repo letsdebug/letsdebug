@@ -12,10 +12,10 @@ type SeverityLevel string
 // Explanation is a human-readable explanation of the issue.
 // Detail is usually the underlying machine error.
 type Problem struct {
-	Name        string
-	Explanation string
-	Detail      string
-	Severity    SeverityLevel
+	Name        string        `json:"name"`
+	Explanation string        `json:"explanation"`
+	Detail      string        `json:"detail"`
+	Severity    SeverityLevel `json:"severity"`
 }
 
 const (
