@@ -110,7 +110,7 @@ func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if domain == "" || !regexDNSName.MatchString(domain) {
+	if !isValidDomain(domain) {
 		doError("Invalid domain provided", http.StatusBadRequest)
 		return
 	}
@@ -232,7 +232,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	domain = normalizeDomain(domain)
-	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 || !regexDNSName.MatchString(domain) {
+	if !isValidDomain(domain) || method == "" || len(method) > 200 {
 		doError("Please provide a valid domain name and validation method.", http.StatusBadRequest)
 		return
 	}
@@ -292,4 +292,11 @@ func normalizeDomain(domain string) string {
 		domain = asASCII
 	}
 	return domain
+}
+
+func isValidDomain(domain string) bool {
+	if strings.HasPrefix(domain, "*.") {
+		domain = domain[2:]
+	}
+	return domain != "" || len(domain) <= 230 && regexDNSName.MatchString(domain)
 }

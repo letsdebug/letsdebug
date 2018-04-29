@@ -34,3 +34,31 @@ func TestAcmeStaging(t *testing.T) {
 		t.Fatalf("Got errors when we should have got none: %v", probs)
 	}
 }
+
+func TestWildcards(t *testing.T) {
+	checkers := []checker{
+		validMethodChecker{},
+		validDomainChecker{},
+		tlssni0102DisabledChecker{},
+		wildcardDns01OnlyChecker{},
+		caaChecker{},
+		&rateLimitChecker{},
+		dnsAChecker{},
+		txtRecordChecker{},
+		httpAccessibilityChecker{},
+		cloudflareChecker{},
+	}
+
+	ctx := newScanContext()
+
+	for _, checker := range checkers {
+		probs, err := checker.Check(ctx, "*.wildcard-test.letsdebug.net", DNS01)
+		if err != nil && err != errNotApplicable {
+			t.Fatal(err)
+		}
+
+		if len(probs) > 0 {
+			t.Fatalf("Expected no problems but got %v", probs)
+		}
+	}
+}
