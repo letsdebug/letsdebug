@@ -96,13 +96,50 @@ func Serve() error {
 }
 
 func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
+	domain := normalizeDomain(chi.URLParam(r, "domain"))
+
+	isBrowser := r.Header.Get("accept") != "application/json"
+
+	doError := func(msg string, code int) {
+		if !isBrowser {
+			http.Error(w, msg, code)
+			return
+		}
+		s.render(w, code, "list.tpl", map[string]interface{}{
+			"Error": msg,
+		})
+	}
+
+	if domain == "" || !regexDNSName.MatchString(domain) {
+		doError("Invalid domain provided", http.StatusBadRequest)
+		return
+	}
+
+	tests, err := s.findTests(domain)
+	if err != nil {
+		log.Printf("couldn't find tests for %s: %v", domain, err)
+		doError("Internal error occured finding tests", http.StatusInternalServerError)
+		return
+	}
+
+	if isBrowser {
+		s.render(w, http.StatusOK, "list.tpl", map[string]interface{}{
+			"Domain": domain,
+			"Tests":  tests,
+		})
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(tests); err != nil {
+		log.Printf("failed to marshal test list: %v", err)
+	}
 }
 
 func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 	domain := chi.URLParam(r, "domain")
 	testID, err := strconv.Atoi(chi.URLParam(r, "testID"))
 
-	isBrowser := r.Header.Get("content-type") != "application/json"
+	isBrowser := r.Header.Get("accept") != "application/json"
 
 	doError := func(msg string, code int) {
 		if !isBrowser {
@@ -194,13 +231,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// If the domain is a unicode-form IDN, convert it to ascii
-	asASCII, err := idna.ToASCII(domain)
-	if err == nil {
-		domain = asASCII
-	}
-
-	domain = strings.ToLower(strings.TrimSpace(domain))
+	domain = normalizeDomain(domain)
 	if domain == "" || method == "" || len(domain) > 230 || len(method) > 200 || !regexDNSName.MatchString(domain) {
 		doError("Please provide a valid domain name and validation method.", http.StatusBadRequest)
 		return
@@ -252,4 +283,13 @@ func envOrDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func normalizeDomain(domain string) string {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	asASCII, err := idna.ToASCII(domain)
+	if err == nil {
+		domain = asASCII
+	}
+	return domain
 }

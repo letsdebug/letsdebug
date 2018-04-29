@@ -2,6 +2,7 @@ package web
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"sort"
 	"time"
@@ -96,6 +97,50 @@ func (t testView) TestDuration() string {
 
 func (t testView) SubmitTime() string {
 	return time.Now().Sub(t.CreatedAt).Truncate(time.Second).String()
+}
+
+func (t testView) Severity() string {
+	if t.Status != "Complete" {
+		return t.Status
+	}
+
+	if t.Result == nil {
+		return "Unknown"
+	}
+
+	if t.Result.Error != "" {
+		return "Failed"
+	}
+
+	if len(t.Result.Problems) == 0 {
+		return "OK"
+	}
+
+	// Since problems are sorted, the first is the worst
+	return string(t.Result.Problems[0].Severity)
+}
+
+func (t testView) Summary() string {
+	if t.Result == nil {
+		return "-"
+	}
+	if t.Result.Error != "" {
+		return t.Result.Error
+	}
+
+	var fatalCount, errorCount, warningCount int
+	for _, p := range t.Result.Problems {
+		switch p.Severity {
+		case "Fatal":
+			fatalCount++
+		case "Error":
+			errorCount++
+		case "Warning":
+			warningCount++
+		}
+	}
+
+	return fmt.Sprintf("%d fatal errors, %d errors and %d warnings", fatalCount, errorCount, warningCount)
 }
 
 func (s *server) migrateUp() error {
@@ -231,7 +276,7 @@ func (s *server) vacuumTests() {
 
 func (s *server) findTests(domain string) ([]testView, error) {
 	var t []testView
-	if err := s.db.Get(&t, `SELECT * FROM tests WHERE domain = $1 ORDER BY created_at DESC LIMIT 10;`, domain); err != nil {
+	if err := s.db.Select(&t, `SELECT * FROM tests WHERE domain = $1 ORDER BY created_at DESC LIMIT 25;`, domain); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
