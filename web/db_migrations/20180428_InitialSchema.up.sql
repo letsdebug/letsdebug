@@ -14,6 +14,8 @@ CREATE TABLE tests (
 
 CREATE INDEX tests_lookup_idx ON tests (id, domain);
 CREATE INDEX tests_domain_idx ON tests (domain);
+CREATE INDEX tests_status_idx on tests (status);
+CREATE INDEX tests_created_idx on tests (created_at DESC);
 
 CREATE FUNCTION notify_tests() RETURNS TRIGGER AS $$
 DECLARE
