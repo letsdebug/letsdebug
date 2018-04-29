@@ -1,4 +1,4 @@
-CREATE TYPE test_status AS ENUM ('Queued', 'Processing', 'Complete');
+CREATE TYPE test_status AS ENUM ('Queued', 'Processing', 'Complete', 'Cancelled');
 
 CREATE TABLE tests (
   id SERIAL PRIMARY KEY,

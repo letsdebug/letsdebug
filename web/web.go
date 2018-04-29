@@ -60,6 +60,8 @@ func Serve() error {
 		}
 	}()
 
+	go s.vacuumTests()
+
 	// Load templates
 	log.Printf("Loading templates ...")
 	s.templates = map[string]*template.Template{}
@@ -122,7 +124,7 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if test.Status != "Complete" {
+	if test.Status != "Complete" && test.Status != "Cancelled" {
 		w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
 	}
 
