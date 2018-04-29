@@ -60,7 +60,7 @@
   </section>
   {{ else }}
 
-  <h2>Test results for <a href="/{{ .Test.Domain}}">{{ .Test.Domain }}</a></h2>
+  <h2>Test results for <a href="/{{ .Test.Domain}}">{{ .Test.Domain }}</a> using {{ .Test.Method }}</h2>
   {{ if eq .Test.Status "Cancelled" }}
   <section class="error">
     This test was cancelled by the server, sorry! You may try again. <a href="/">Go back to the start.</a>
