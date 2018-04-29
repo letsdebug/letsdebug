@@ -11,6 +11,8 @@ import (
 
 	"os"
 
+	"errors"
+
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	"github.com/golang-migrate/migrate/source/go-bindata"
@@ -110,22 +112,14 @@ func (s *server) listenForTests(dsn string) error {
 
 			log.Printf("Starting test: %+v", notification)
 
+			// doesn't matter if this query fails
 			s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, notification.Id)
 
-			os.Setenv("LETSDEBUG_DISABLE_CERTWATCH", "1")
-			os.Setenv("LETSDEBUG_DISABLE_ACMESTAGING", "1")
-			probs, err := letsdebug.Check(notification.Domain, letsdebug.ValidationMethod(notification.Method))
-			if err != nil {
-				log.Printf("Error in test %d, %v", notification.Id, err)
-				s.db.Exec(`UPDATE tests SET completed_at = CURRENT_TIMESTAMP, status = 'Complete', result = $2 WHERE id = $1;`,
-					notification.Id, err.Error())
-				continue
-			}
+			result := runChecks(notification.Domain, notification.Method)
 
-			result, _ := json.Marshal(probs)
-
+			strResult, _ := json.Marshal(result)
 			if _, err := s.db.Exec(`UPDATE tests SET completed_at = CURRENT_TIMESTAMP, status = 'Complete', result = $2 WHERE id = $1;`,
-				notification.Id, string(result)); err != nil {
+				notification.Id, string(strResult)); err != nil {
 				log.Printf("Error storing test %d result: %v", notification.Id, err)
 				continue
 			}
@@ -138,4 +132,29 @@ func (s *server) listenForTests(dsn string) error {
 	}
 
 	return nil
+}
+
+type dbResult struct {
+	Problems []letsdebug.Problem `json:"problems"`
+	Error    error               `json:"error"`
+}
+
+func runChecks(domain, method string) dbResult {
+	os.Setenv("LETSDEBUG_DISABLE_CERTWATCH", "1")
+	os.Setenv("LETSDEBUG_DISABLE_ACMESTAGING", "1")
+
+	resultCh := make(chan dbResult)
+
+	go func() {
+		probs, err := letsdebug.Check(domain, letsdebug.ValidationMethod(method))
+		resultCh <- dbResult{probs, err}
+	}()
+
+	select {
+	case r := <-resultCh:
+		return r
+
+	case <-time.After(60 * time.Second):
+		return dbResult{nil, errors.New("timeout")}
+	}
 }
