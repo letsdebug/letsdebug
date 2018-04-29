@@ -25,8 +25,8 @@ var (
 )
 
 type server struct {
-	tpl *template.Template
-	db  *sqlx.DB
+	templates map[string]*template.Template
+	db        *sqlx.DB
 }
 
 // Serve begins serving the web application over LETSDEBUG_WEB_LISTEN_ADDR,
@@ -53,13 +53,25 @@ func Serve() error {
 
 	// Load templates
 	log.Printf("Loading templates ...")
-	s.tpl = template.New("")
-	names, _ := AssetDir("templates")
-	for _, tpl := range names {
-		if _, err := s.tpl.New(tpl).Parse(string(MustAsset("templates/" + tpl))); err != nil {
+	s.templates = map[string]*template.Template{}
+	names, _ := AssetDir("templates/layouts")
+	includes, _ := AssetDir("templates/includes")
+
+	fmt.Println(names, includes)
+
+	for _, tplName := range names {
+		tpl := template.New(tplName)
+		for _, incName := range includes {
+			if _, err := tpl.Parse(string(MustAsset("templates/includes/" + incName))); err != nil {
+				return err
+			}
+		}
+		if _, err := tpl.Parse(string(MustAsset("templates/layouts/" + tplName))); err != nil {
 			return err
 		}
+		s.templates[tplName] = tpl
 	}
+	fmt.Printf("%+v", s.templates)
 
 	// Routes
 	// - Home Page
@@ -79,6 +91,8 @@ func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
+	s.templates["results.tpl"].Execute(w, map[string]interface{}{})
 }
 
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +105,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, msg, code)
 			return
 		}
-		if err := s.tpl.ExecuteTemplate(w, "home.tpl", map[string]interface{}{
+		if err := s.templates["home.tpl"].Execute(w, map[string]interface{}{
 			"Error": msg,
 		}); err != nil {
 			log.Printf("Error executing home template with error: %v", err)
@@ -166,7 +180,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
-	if err := s.tpl.ExecuteTemplate(w, "home.tpl", nil); err != nil {
+	if err := s.templates["home.tpl"].Execute(w, nil); err != nil {
 		log.Printf("Error executing home template: %v", err)
 	}
 }

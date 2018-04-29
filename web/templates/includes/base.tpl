@@ -44,7 +44,6 @@
 </head>
 <body>
   {{ template "body" . }}
-
   <footer>
     <a href="https://github.com/letsdebug/letsdebug" target="_blank" rel="noopener noreferrer">Find us at github.com/letsdebug -
       we have an API and command line tool as well.</a>
