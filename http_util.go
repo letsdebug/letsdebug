@@ -40,7 +40,7 @@ func (r httpCheckResult) String() string {
 	return fmt.Sprintf("[Address Type=%s,Response Code=%d,Server=%s]", addrType, r.StatusCode, r.ServerHeader)
 }
 
-func checkHTTP(domain string, address net.IP) (httpCheckResult, Problem) {
+func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckResult, Problem) {
 	dialer := net.Dialer{
 		Timeout: httpTimeout * time.Second,
 	}
@@ -54,17 +54,28 @@ func checkHTTP(domain string, address net.IP) (httpCheckResult, Problem) {
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				host, port, _ := net.SplitHostPort(addr)
+				host = normalizeFqdn(host)
+
+				dialFunc := func(ip net.IP, port string) (net.Conn, error) {
+					if ip.To4() == nil {
+						return dialer.DialContext(ctx, "tcp", "["+ip.String()+"]:"+port)
+					}
+					return dialer.DialContext(ctx, "tcp", ip.String()+":"+port)
+				}
 
 				// Only override the address for this specific domain.
 				// We don't want to mangle redirects.
-				if normalizeFqdn(host) != domain {
-					return dialer.DialContext(ctx, network, addr)
+				if host == domain {
+					return dialFunc(address, port)
 				}
 
-				if address.To4() == nil {
-					return dialer.DialContext(ctx, "tcp", "["+address.String()+"]:"+port)
+				// For other hosts, we need to use Unbound to resolve the name
+				otherAddr, err := scanCtx.LookupRandomHTTPRecord(host)
+				if err != nil {
+					return nil, err
 				}
-				return dialer.DialContext(ctx, "tcp", address.String()+":"+port)
+
+				return dialFunc(otherAddr, port)
 			},
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,

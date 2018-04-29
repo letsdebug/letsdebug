@@ -130,7 +130,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// If the domain is punycode, coerse it to ascii
+	// If the domain is a unicode-form IDN, convert it to ascii
 	asASCII, err := idna.ToASCII(domain)
 	if err == nil {
 		domain = asASCII

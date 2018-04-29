@@ -99,7 +99,7 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 	var v6Res httpCheckResult
 
 	for _, ip := range ips {
-		res, prob := checkHTTP(domain, ip)
+		res, prob := checkHTTP(ctx, domain, ip)
 		if !prob.IsZero() {
 			probs = append(probs, prob)
 		}
