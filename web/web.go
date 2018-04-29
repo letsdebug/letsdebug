@@ -102,25 +102,32 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 	domain := chi.URLParam(r, "domain")
 	testID, err := strconv.Atoi(chi.URLParam(r, "testID"))
 
-	if domain == "" || err != nil {
-		s.render(w, http.StatusBadRequest, "results.tpl", map[string]interface{}{
-			"Error": "Invalid request parameters.",
+	isBrowser := r.Header.Get("content-type") != "application/json"
+
+	doError := func(msg string, code int) {
+		if !isBrowser {
+			http.Error(w, msg, code)
+			return
+		}
+		s.render(w, code, "results.tpl", map[string]interface{}{
+			"Error": msg,
 		})
+	}
+
+	if domain == "" || err != nil {
+		doError("Invalid request parameters.", http.StatusBadRequest)
+		return
 	}
 
 	test, err := s.findTest(domain, testID)
 	if err != nil {
 		log.Printf("fetching %s/%d: %v", domain, testID, err)
-		s.render(w, http.StatusInternalServerError, "results.tpl", map[string]interface{}{
-			"Error": "An internal error occured fetching that test.",
-		})
+		doError("An internal error occurred fetching that test.", http.StatusInternalServerError)
 		return
 	}
 
 	if test == nil {
-		s.render(w, http.StatusNotFound, "results.tpl", map[string]interface{}{
-			"Error": "No such result exists.",
-		})
+		doError("No such result exists.", http.StatusNotFound)
 		return
 	}
 
@@ -128,9 +135,16 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
 	}
 
-	s.render(w, http.StatusOK, "results.tpl", map[string]interface{}{
-		"Test": test,
-	})
+	if isBrowser {
+		s.render(w, http.StatusOK, "results.tpl", map[string]interface{}{
+			"Test": test,
+		})
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(test); err != nil {
+		log.Printf("Error encoding test result response: %v", err)
+	}
 }
 
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
@@ -143,11 +157,9 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, msg, code)
 			return
 		}
-		if err := s.templates["home.tpl"].Execute(w, map[string]interface{}{
+		s.render(w, code, "home.tpl", map[string]interface{}{
 			"Error": msg,
-		}); err != nil {
-			log.Printf("Error executing home template with error: %v", err)
-		}
+		})
 	}
 
 	switch r.Header.Get("content-type") {
@@ -157,8 +169,8 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	case "application/json":
 		isBrowser = false
 		var testRequest struct {
-			Domain string `json:"domain"`
-			Method string `json:"method"`
+			Domain string
+			Method string
 		}
 		if err := json.NewDecoder(r.Body).Decode(&testRequest); err != nil {
 			log.Printf("Error decoding request: %v", err)
@@ -209,11 +221,11 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	testResponse := struct {
-		Domain string `json:"domain"`
-		ID     uint64 `json:"id"`
+		Domain string
+		ID     uint64
 	}{domain, id}
-	if err := json.NewEncoder(w).Encode(&testResponse); err != nil {
-		log.Printf("Error encoding response: %v", err)
+	if err := json.NewEncoder(w).Encode(testResponse); err != nil {
+		log.Printf("Error encoding submit test response: %v", err)
 	}
 }
 

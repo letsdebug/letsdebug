@@ -52,8 +52,8 @@ func (probs problems) Less(i, j int) bool {
 }
 
 type resultView struct {
-	Error    string   `json:"error"`
-	Problems problems `json:"problems"`
+	Error    string
+	Problems problems
 }
 
 func (rv *resultView) Scan(src interface{}) error {
@@ -159,9 +159,9 @@ func (s *server) listenForTests(dsn string) error {
 	}
 
 	notification := struct {
-		ID     int    `json:"id"`
-		Domain string `json:"domain"`
-		Method string `json:"method"`
+		ID     int
+		Domain string
+		Method string
 	}{}
 
 	for {
@@ -227,4 +227,16 @@ func (s *server) vacuumTests() {
 		}
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func (s *server) findTests(domain string) ([]testView, error) {
+	var t []testView
+	if err := s.db.Get(&t, `SELECT * FROM tests WHERE domain = $1 ORDER BY created_at DESC LIMIT 10;`, domain); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return t, nil
 }
