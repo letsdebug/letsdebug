@@ -22,6 +22,7 @@ const (
 	SeverityFatal   SeverityLevel = "Fatal" // Represents a fatal error which will stop any further checks
 	SeverityError   SeverityLevel = "Error"
 	SeverityWarning SeverityLevel = "Warning"
+	SeverityDebug   SeverityLevel = "Debug" // Not to be shown by default
 )
 
 func (p Problem) String() string {
@@ -61,5 +62,14 @@ func dnsLookupFailed(name, rrType string, err error) Problem {
 		Explanation: fmt.Sprintf(`A fatal issue occured during the DNS lookup process for %s/%s.`, name, rrType),
 		Detail:      err.Error(),
 		Severity:    SeverityFatal,
+	}
+}
+
+func debugProblem(name, message, detail string) Problem {
+	return Problem{
+		Name:        name,
+		Explanation: message,
+		Detail:      detail,
+		Severity:    SeverityDebug,
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/letsdebug/letsdebug"
+
 	"net"
 
 	"encoding/json"
@@ -172,9 +174,23 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
 	}
 
+	isDebug := r.URL.Query().Get("debug") == "y"
+	// Filter out debug
+	if test.Status == "Complete" && test.Result != nil && len(test.Result.Problems) > 0 && !isDebug {
+		deleted := 0
+		for i := range test.Result.Problems {
+			j := i - deleted
+			if test.Result.Problems[j].Severity == letsdebug.SeverityDebug {
+				test.Result.Problems = test.Result.Problems[:j+copy(test.Result.Problems[j:], test.Result.Problems[j+1:])]
+				deleted++
+			}
+		}
+	}
+
 	if isBrowser {
 		s.render(w, http.StatusOK, "results.tpl", map[string]interface{}{
-			"Test": test,
+			"Test":  test,
+			"Debug": isDebug,
 		})
 		return
 	}

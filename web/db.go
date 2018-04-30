@@ -37,6 +37,9 @@ func (probs problems) Less(i, j int) bool {
 	if p1.Severity == p2.Severity {
 		return true
 	}
+	if p1.Severity == letsdebug.SeverityDebug {
+		return false
+	}
 	if p1.Severity == letsdebug.SeverityFatal {
 		return true
 	}
@@ -117,7 +120,12 @@ func (t testView) Severity() string {
 	}
 
 	// Since problems are sorted, the first is the worst
-	return string(t.Result.Problems[0].Severity)
+	s := string(t.Result.Problems[0].Severity)
+	if s == "Debug" {
+		return "OK"
+	}
+
+	return s
 }
 
 func (t testView) Summary() string {

@@ -3,6 +3,7 @@ package letsdebug
 import (
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/miekg/dns"
@@ -54,6 +55,13 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 		}
 	}
 
+	var sb []string
+	for _, rr := range append(aRRs, aaaaRRs...) {
+		sb = append(sb, rr.String())
+	}
+
+	probs = append(probs, debugProblem("HTTPRecords", "A and AAAA records found for this domain", strings.Join(sb, "\n")))
+
 	return probs, nil
 }
 
@@ -98,6 +106,8 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 	var v4Res httpCheckResult
 	var v6Res httpCheckResult
 
+	var debug []string
+
 	for _, ip := range ips {
 		res, prob := checkHTTP(ctx, domain, ip)
 		if !prob.IsZero() {
@@ -108,11 +118,15 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		} else if v6Res.IsZero() {
 			v6Res = res
 		}
+		debug = append(debug, fmt.Sprintf("Request to: %s/%s, Result: %s, Issue: %s",
+			domain, ip.String(), res.String(), prob.Name))
 	}
 
 	if (!v6Res.IsZero() && !v6Res.IsZero()) && (v4Res.StatusCode != v6Res.StatusCode || v4Res.ServerHeader != v6Res.ServerHeader) {
 		probs = append(probs, v4v6Discrepancy(domain, v4Res, v6Res))
 	}
+
+	probs = append(probs, debugProblem("HTTPCheck", "Requests made to the domain", strings.Join(debug, "\n")))
 
 	return probs, nil
 }

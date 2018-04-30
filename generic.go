@@ -89,9 +89,12 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 		return probs, nil
 	}
 
-	if rule.Decompose(domain)[1] == "" {
+	if r := rule.Decompose(domain)[1]; r == "" {
 		probs = append(probs, invalidDomain(domain, "Domain is a TLD"))
 		return probs, nil
+	} else {
+		probs = append(probs, debugProblem("PublicSuffix", "The IANA public suffix is the TLD of the Registered Domain",
+			fmt.Sprintf("The TLD for %s is: %s", domain, r)))
 	}
 
 	return probs, nil
@@ -138,6 +141,10 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 				}
 			}
 		}
+
+		probs = append(probs, debugProblem("CAA",
+			"CAA records control authorization for certificate authorities to issue certificates for a domain",
+			collateRecords(append(issue, issuewild...))))
 
 		if len(criticalUnknown) > 0 {
 			probs = append(probs, caaCriticalUnknown(domain, wildcard, criticalUnknown))
@@ -320,6 +327,9 @@ func (c statusioChecker) Check(ctx *scanContext, domain string, method Validatio
 		probs = append(probs, statusioNotOperational(statusioApiResp.Result.StatusOverall.Status, statusioApiResp.Result.StatusOverall.Updated))
 	}
 
+	probs = append(probs, debugProblem("StatusIO", "The current status.io status for Let's Encrypt",
+		fmt.Sprintf("%v", statusioApiResp.Result.StatusOverall.Status)))
+
 	return probs, nil
 }
 
@@ -468,6 +478,8 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 		}, nil
 	}
 
+	var debug string
+
 	// Limit: Certificates per Registered Domain
 	// TODO: implement Renewal Excemption
 	certsTowardsRateLimit := certs.FindWithCommonRegisteredDomain(registeredDomain)
@@ -482,6 +494,10 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 			registeredDomain, dropOff, dropOffDiff)))
 	}
 
+	for _, cert := range certsTowardsRateLimit {
+		debug = fmt.Sprintf("%s\nSerial: %s\nNotBefore: %v\nNames: %v\n", debug, cert.SerialNumber.String(), cert.NotBefore, cert.DNSNames)
+	}
+
 	// Limit: Duplicate Certificate limit of 5 certificates per week
 	for names, dupes := range certs.CountDuplicates(domain) {
 		if dupes < 5 {
@@ -491,6 +507,10 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 			fmt.Sprintf(`The Duplicate Certificate limit (5 certificates with the exact same set of domains per week) has been `+
 				`exceeded and is affecting the domain "%s". The exact set of domains affected is: "%v". It may be possible to avoid this `+
 				`rate limit by issuing a certificate with an additional or different domain name.`, domain, names)))
+	}
+
+	if debug != "" {
+		probs = append(probs, debugProblem("RateLimit", "Certificates contributing to rate limits for this domain", debug))
 	}
 
 	return probs, nil
@@ -575,6 +595,7 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 		if p := translateAcmeError(domain, err); p.Name != "" {
 			probs = append(probs, p)
 		}
+		probs = append(probs, debugProblem("LetsEncryptStaging", "Order creation error", err.Error()))
 		return probs, nil
 	}
 
@@ -589,6 +610,8 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 		probs = append(probs, internalProblem("An unknown problem occured while performing a test "+
 			"authorization against the Let's Encrypt staging service: "+err.Error(), SeverityWarning))
 	}
+
+	authzFailures := []string{}
 
 	for _, authzURL := range order.Authorizations {
 		go func(authzURL string) {
@@ -611,12 +634,21 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 				if p := translateAcmeError(domain, err); p.Name != "" {
 					probs = append(probs, p)
 				}
+				authzFailures = append(authzFailures, err.Error())
 				probsMu.Unlock()
 			}
 		}(authzURL)
 	}
 
 	wg.Wait()
+
+	if len(authzFailures) > 0 {
+		probs = append(probs, debugProblem("LetsEncryptStaging",
+			fmt.Sprintf("Challenge update failures for %s in order %s", domain, order.Url),
+			strings.Join(authzFailures, "\n")))
+	} else {
+		probs = append(probs, debugProblem("LetsEncryptStaging", "Order for "+domain, order.Url))
+	}
 
 	return probs, nil
 }
