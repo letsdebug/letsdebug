@@ -19,7 +19,7 @@ server-dev: generate
 server-dev-db-up:
 	docker run -d --name letsdebug-db -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_USER=letsdebug postgres:10.3-alpine
 
-letsdebug-server:
+letsdebug-server: generate
 	go build -o letsdebug-server cmd/server/server.go
 
 deploy: clean letsdebug-server
