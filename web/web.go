@@ -357,5 +357,5 @@ func isValidDomain(domain string) bool {
 	if strings.HasPrefix(domain, "*.") {
 		domain = domain[2:]
 	}
-	return domain != "" || len(domain) <= 230 && regexDNSName.MatchString(domain)
+	return domain != "" && len(domain) <= 230 && regexDNSName.MatchString(domain)
 }
