@@ -431,25 +431,17 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	// DB setup once
 	c.dbMu.Lock()
 	if c.db == nil {
-		db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable")
+		// OPS note: force the v4 address because v6 has been super-flakey
+		db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable connect_timeout=5")
 		if err != nil {
 			c.dbMu.Unlock()
 			return []Problem{
 				internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityWarning),
 			}, nil
 		}
-		db.SetConnMaxLifetime(30 * time.Second)
-		db.SetMaxOpenConns(2)
-		db.SetMaxIdleConns(2)
+		db.SetMaxOpenConns(5)
+		db.SetMaxIdleConns(1)
 		c.db = db
-
-		// Experiment: will this prevent idle conns broken by the remote host?
-		go func() {
-			for {
-				c.db.Exec("SELECT 1;")
-				time.Sleep(time.Minute)
-			}
-		}()
 	}
 	c.dbMu.Unlock()
 
@@ -459,6 +451,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	rows, err := c.db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+registeredDomain, time.Now().Add(-7*24*time.Hour))
 	if err != nil && err != sql.ErrNoRows {
 		return []Problem{
