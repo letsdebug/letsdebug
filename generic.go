@@ -401,8 +401,6 @@ func (l crtList) CountDuplicates(domain string) map[string]int {
 // rateLimitChecker ensures that the domain is not currently affected
 // by domain-based rate limits using crtwatch's database
 type rateLimitChecker struct {
-	db   *sql.DB
-	dbMu sync.Mutex
 }
 
 const rateLimitCheckerQuery = `SELECT c.CERTIFICATE der
@@ -428,22 +426,13 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 		domain = domain[2:]
 	}
 
-	// DB setup once
-	c.dbMu.Lock()
-	if c.db == nil {
-		// OPS note: force the v4 address because v6 has been super-flakey
-		db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable connect_timeout=5")
-		if err != nil {
-			c.dbMu.Unlock()
-			return []Problem{
-				internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityWarning),
-			}, nil
-		}
-		db.SetMaxOpenConns(5)
-		db.SetMaxIdleConns(1)
-		c.db = db
+	db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable connect_timeout=5")
+	if err != nil {
+		return []Problem{
+			internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityWarning),
+		}, nil
 	}
-	c.dbMu.Unlock()
+	defer db.Close()
 
 	// Since we are checking rate limits, we need to query the Registered Domain
 	// for the domain in question
@@ -452,7 +441,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	rows, err := c.db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+registeredDomain, time.Now().Add(-7*24*time.Hour))
+	rows, err := db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+registeredDomain, time.Now().Add(-7*24*time.Hour))
 	if err != nil && err != sql.ErrNoRows {
 		return []Problem{
 			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityWarning),
