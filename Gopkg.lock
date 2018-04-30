@@ -38,6 +38,12 @@
   revision = "2aeb6a910c2b94f2d5eb53d9895d80e27264ec41"
 
 [[projects]]
+  name = "github.com/juju/ratelimit"
+  packages = ["."]
+  revision = "59fac5042749a5afb9af70e813da1dd5474f0167"
+  version = "1.0.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/lib/pq"
   packages = [
@@ -113,6 +119,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d1358ba3d151784c14c59bcf2a4535783318a874e3d40f574ea9bd1ff59a40bf"
+  inputs-digest = "7d34ff5c142701166bc5cb00a017f2f90e1c6377f05610a84f5234701af7d70d"
   solver-name = "gps-cdcl"
   solver-version = 1

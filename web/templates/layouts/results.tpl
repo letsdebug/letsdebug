@@ -113,8 +113,8 @@
     <p class="times">Submitted <abbr title="{{ .Test.CreatedAt }}">{{ .Test.SubmitTime }} ago</abbr>.
     {{ if .Test.QueueDuration }}Sat in queue for {{ .Test.QueueDuration }}.{{ end }}
     {{ if .Test.TestDuration }}Completed in {{ .Test.TestDuration }}.{{ end }}
-    {{ if .Debug }} <a href="/{{ .Test.Domain }}/{{ .Test.ID}}">Hide debug information.</a>
-    {{ else }} <a href="/{{ .Test.Domain }}/{{ .Test.ID}}?debug=y">Show debug information.</a> {{ end }}
+    {{ if .Debug }} <a href="/{{ .Test.Domain }}/{{ .Test.ID}}">Hide verbose information.</a>
+    {{ else }} <a href="/{{ .Test.Domain }}/{{ .Test.ID}}?debug=y">Show verbose information.</a> {{ end }}
   </p>
   </section>        
   {{ end }}

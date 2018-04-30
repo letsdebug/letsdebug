@@ -1,25 +1,24 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/letsdebug/letsdebug"
-
-	"net"
-
-	"encoding/json"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/jmoiron/sqlx"
+	"github.com/juju/ratelimit"
+	"github.com/letsdebug/letsdebug"
 	"golang.org/x/net/idna"
 )
 
@@ -31,6 +30,9 @@ type server struct {
 	templates map[string]*template.Template
 	db        *sqlx.DB
 	workCh    chan workRequest
+
+	rateLimitByIP     map[string]*ratelimit.Bucket
+	rateLimitByDomain map[string]*ratelimit.Bucket
 }
 
 // Serve begins serving the web application over LETSDEBUG_WEB_LISTEN_ADDR,
@@ -94,6 +96,9 @@ func Serve() error {
 	r.Get("/{domain}/{testID}", s.httpViewTestResult)
 	// - View all tests for domain
 	r.Get("/{domain}", s.httpViewDomain)
+
+	s.rateLimitByDomain = map[string]*ratelimit.Bucket{}
+	s.rateLimitByIP = map[string]*ratelimit.Bucket{}
 
 	log.Printf("Starting web server ...")
 	return http.ListenAndServe(envOrDefault("LISTEN_ADDR", "127.0.0.1:9150"), r)
@@ -173,7 +178,7 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if test.Status != "Complete" && test.Status != "Cancelled" {
-		w.Header().Set("Refresh", fmt.Sprintf("5;url=%s", r.URL.String()))
+		w.Header().Set("Refresh", fmt.Sprintf("3;url=%s", r.URL.String()))
 	}
 
 	isDebug := r.URL.Query().Get("debug") == "y"
@@ -256,6 +261,32 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+
+	// Enforce rate limits here.
+	// - Per IP: 1 test per 10s, capacity 3
+	ipLimit, ok := s.rateLimitByIP[ip]
+	if !ok {
+		ipLimit = ratelimit.NewBucket(
+			time.Duration(envOrDefaultInt("RATELIMIT_IP_REGEN_SECS", 3))*time.Second,
+			int64(envOrDefaultInt("RATELIMIT_IP_CAPACITY", 3)))
+		s.rateLimitByIP[ip] = ipLimit
+	}
+	if _, takeOk := ipLimit.TakeMaxDuration(1, time.Second); !takeOk {
+		doError(fmt.Sprintf("Too many tests from %s recently, try again soon.", ip), http.StatusTooManyRequests)
+		return
+	}
+	// - Per domain: 3 tests per minute, capacity 3.
+	domainLimit, ok := s.rateLimitByDomain[ip]
+	if !ok {
+		domainLimit = ratelimit.NewBucket(
+			time.Duration(envOrDefaultInt("RATELIMIT_DOMAIN_REGEN_SECS", 20))*time.Second,
+			int64(envOrDefaultInt("RATELIMIT_DOMAIN_CAPACITY", 3)))
+		s.rateLimitByDomain[ip] = domainLimit
+	}
+	if _, takeOk := domainLimit.TakeMaxDuration(1, time.Second); !takeOk {
+		doError(fmt.Sprintf("Too many tests for %s recently, try again soon.", domain), http.StatusTooManyRequests)
+		return
+	}
 
 	id, err := s.createNewTest(domain, method, ip)
 	if err != nil {
