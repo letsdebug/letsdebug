@@ -60,7 +60,13 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 		sb = append(sb, rr.String())
 	}
 
-	probs = append(probs, debugProblem("HTTPRecords", "A and AAAA records found for this domain", strings.Join(sb, "\n")))
+	if len(sb) > 0 {
+		probs = append(probs, debugProblem("HTTPRecords", "A and AAAA records found for this domain", strings.Join(sb, "\n")))
+	}
+
+	if len(sb) == 0 {
+		probs = append(probs, noRecords(domain, "No A or AAAA records found."))
+	}
 
 	return probs, nil
 }
@@ -98,7 +104,7 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 	}
 
 	if len(ips) == 0 {
-		probs = append(probs, noRecords(domain, "No A or AAAA records found."))
+		return probs, nil
 	}
 
 	// Track one response from IPv4 and one response from IPv6
@@ -134,11 +140,11 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 func noRecords(name, rrSummary string) Problem {
 	return Problem{
 		Name: "NoRecords",
-		Explanation: fmt.Sprintf(`No valid A or AAAA records could be ultimately resolved for %s (including indirection via CNAME). `+
+		Explanation: fmt.Sprintf(`No valid A or AAAA records could be ultimately resolved for %s. `+
 			`This means that Let's Encrypt would not be able to to connect to your domain to perform HTTP validation, since `+
 			`it would not know where to connect to.`, name),
 		Detail:   rrSummary,
-		Severity: SeverityError,
+		Severity: SeverityFatal,
 	}
 }
 
