@@ -261,6 +261,9 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
 
 	// Enforce rate limits here.
 	// - Per IP: 1 test per 10s, capacity 3
@@ -276,7 +279,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// - Per domain: 3 tests per minute, capacity 3.
-	domainLimit, ok := s.rateLimitByDomain[ip]
+	domainLimit, ok := s.rateLimitByDomain[domain]
 	if !ok {
 		domainLimit = ratelimit.NewBucket(
 			time.Duration(envOrDefaultInt("RATELIMIT_DOMAIN_REGEN_SECS", 20))*time.Second,

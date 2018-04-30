@@ -29,7 +29,7 @@ CloudflareCDN | Checks whether the domain is being served via Cloudflare's proxy
 CloudflareSSLNotProvisioned | Checks whether the domain has its SSL terminated by Cloudflare and Cloudflare has not provisioned a certificate yet (leading to a TLS handshake error). | [Example](https://letsdebug.net/cf-no-ssl.fleetssl.com/10) |
 IssueFromLetsEncrypt | Attempts to detect issues with a high degree of accuracy via the Let's Encrypt v2 staging service by attempting to perform an authorization for the domain. Discovers issues such as CA-based domain blacklists & other policies, specific networking issues. | [Example](https://letsdebug.net/bankofamerica.com/12) |
 
-## API Usage
+## Web API Usage
 
 There is a JSON-based API available as part of the web frontend.
 
@@ -54,6 +54,15 @@ or to view all recent tests
 TODO: improve documentation/releases
 
     go run cmd/cli/cli.go -domain example.org -method http-01 -debug
+
+## Library Usage
+
+```go
+
+import "github.com/letsdebug/letsdebug"
+
+problems, _ := letsdebug.Check("example.org", "http-01")
+```
 
 ## Installation
 

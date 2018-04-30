@@ -1,4 +1,7 @@
-.PHONY: clean all deps server-dev server-dev-db-up
+.PHONY: clean all deps server-dev server-dev-db-up deploy
+
+clean:
+	rm -f letsdebug-server
 
 deps:
 	go get -u github.com/jteeuwen/go-bindata/...
@@ -15,3 +18,10 @@ server-dev: generate
 
 server-dev-db-up:
 	docker run -d --name letsdebug-db -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_USER=letsdebug postgres:10.3-alpine
+
+letsdebug-server:
+	go build -o letsdebug-server cmd/server/server.go
+
+deploy: clean letsdebug-server
+	rsync -vhz --progress letsdebug-server root@letsdebug.net:/usr/local/bin/ && \
+	ssh root@letsdebug.net "systemctl restart letsdebug"
