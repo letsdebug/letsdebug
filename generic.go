@@ -442,8 +442,10 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 
 		// Experiment: will this prevent idle conns broken by the remote host?
 		go func() {
-			c.db.Exec("SELECT 1;")
-			time.Sleep(time.Minute)
+			for {
+				c.db.Exec("SELECT 1;")
+				time.Sleep(time.Minute)
+			}
 		}()
 	}
 	c.dbMu.Unlock()
