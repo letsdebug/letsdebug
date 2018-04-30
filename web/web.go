@@ -284,7 +284,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		domainLimit = ratelimit.NewBucket(
 			time.Duration(envOrDefaultInt("RATELIMIT_DOMAIN_REGEN_SECS", 20))*time.Second,
 			int64(envOrDefaultInt("RATELIMIT_DOMAIN_CAPACITY", 3)))
-		s.rateLimitByDomain[ip] = domainLimit
+		s.rateLimitByDomain[domain] = domainLimit
 	}
 	if _, takeOk := domainLimit.TakeMaxDuration(1, time.Second); !takeOk {
 		doError(fmt.Sprintf("Too many tests for %s recently, try again soon.", domain), http.StatusTooManyRequests)
