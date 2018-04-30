@@ -438,6 +438,9 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 				internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityWarning),
 			}, nil
 		}
+		db.SetConnMaxLifetime(30 * time.Second)
+		db.SetMaxOpenConns(2)
+		db.SetMaxIdleConns(2)
 		c.db = db
 
 		// Experiment: will this prevent idle conns broken by the remote host?
