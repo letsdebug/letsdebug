@@ -211,11 +211,7 @@ func (s *server) listenForTests(dsn string) error {
 		return err
 	}
 
-	notification := struct {
-		ID     int
-		Domain string
-		Method string
-	}{}
+	var notification workRequest
 
 	for {
 		select {
@@ -230,52 +226,16 @@ func (s *server) listenForTests(dsn string) error {
 				continue
 			}
 
-			log.Printf("Starting test: %+v", notification)
-
-			// doesn't matter if this query fails
-			s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, notification.ID)
-
-			result := runChecks(notification.Domain, notification.Method)
-
-			strResult, _ := json.Marshal(result)
-			if _, err := s.db.Exec(`UPDATE tests SET completed_at = CURRENT_TIMESTAMP, status = 'Complete', result = $2 WHERE id = $1;`,
-				notification.ID, string(strResult)); err != nil {
-				log.Printf("Error storing test %d result: %v", notification.ID, err)
-				continue
-			}
-
-			log.Printf("Test %d complete", notification.ID)
-
-		case <-time.After(5 * time.Minute):
+			s.workCh <- notification
+		case <-time.After(time.Minute):
 			go listener.Ping()
 		}
 	}
 }
 
-func runChecks(domain, method string) resultView {
-	resultCh := make(chan resultView)
-
-	go func() {
-		probs, err := letsdebug.Check(domain, letsdebug.ValidationMethod(method))
-		if err != nil {
-			resultCh <- resultView{err.Error(), probs}
-			return
-		}
-		resultCh <- resultView{"", probs}
-	}()
-
-	select {
-	case r := <-resultCh:
-		return r
-
-	case <-time.After(60 * time.Second):
-		return resultView{"Test time exceeded 60 seconds, please try again soon.", nil}
-	}
-}
-
 func (s *server) vacuumTests() {
 	for {
-		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status NOT IN ('Cancelled','Complete') AND created_at < now() - interval '5 minutes';`); err != nil {
+		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status NOT IN ('Cancelled','Complete') AND created_at < now() - interval '3 minutes';`); err != nil {
 			log.Printf("Failed to vacuum: %v", err)
 		}
 		time.Sleep(10 * time.Second)

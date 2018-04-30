@@ -30,6 +30,7 @@ var (
 type server struct {
 	templates map[string]*template.Template
 	db        *sqlx.DB
+	workCh    chan workRequest
 }
 
 // Serve begins serving the web application over LETSDEBUG_WEB_LISTEN_ADDR,
@@ -62,6 +63,7 @@ func Serve() error {
 		}
 	}()
 
+	go s.runWorkers(envOrDefaultInt("CONCURRENCY", 10))
 	go s.vacuumTests()
 
 	// Load templates
@@ -297,6 +299,13 @@ func (s *server) render(w http.ResponseWriter, statusCode int, templateName stri
 func envOrDefault(key, fallback string) string {
 	if v := os.Getenv("LETSDEBUG_WEB_" + key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func envOrDefaultInt(key string, fallback int) int {
+	if i, err := strconv.Atoi(envOrDefault(key, "")); err == nil {
+		return i
 	}
 	return fallback
 }
