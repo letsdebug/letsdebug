@@ -51,6 +51,16 @@
   font-size: 0.75rem;
   color: #333;
 }
+.recheck-form {
+  display: inline;
+}
+.recheck-form input[type='submit'] {
+  border: none;
+  background: white;
+  color: #2c3c69;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
 </style>
 {{ end }}
 {{ define "body" }}
@@ -64,7 +74,17 @@
   </section>
   {{ else }}
 
-  <h2>Test results for <a href="/{{ .Test.Domain}}">{{ .Test.Domain }}</a> using {{ .Test.Method }}</h2>
+  <h2>Test result for <a href="/{{ .Test.Domain}}">{{ .Test.Domain }}</a> using {{ .Test.Method }}
+    {{ if eq .Test.Status "Complete" }}
+    <form action="/" method="POST" class="recheck-form">
+      <input type="hidden" name="domain" value="{{ .Test.Domain }}">
+      <input type="hidden" name="method" value="{{ .Test.Method }}">
+      <input type="submit" value="(Rerun test)">
+    </form>
+    {{ end }}
+  </h2>
+      
+
   {{ if eq .Test.Status "Cancelled" }}
   <section class="error">
     This test was cancelled by the server, sorry! You may try again. <a href="/">Go back to the start.</a>
@@ -113,8 +133,10 @@
     <p class="times">Submitted <abbr title="{{ .Test.CreatedAt }}">{{ .Test.SubmitTime }} ago</abbr>.
     {{ if .Test.QueueDuration }}Sat in queue for {{ .Test.QueueDuration }}.{{ end }}
     {{ if .Test.TestDuration }}Completed in {{ .Test.TestDuration }}.{{ end }}
+    {{ if eq .Test.Status "Complete" }}
     {{ if .Debug }} <a href="/{{ .Test.Domain }}/{{ .Test.ID}}">Hide verbose information.</a>
     {{ else }} <a href="/{{ .Test.Domain }}/{{ .Test.ID}}?debug=y">Show verbose information.</a> {{ end }}
+    {{ end }}
   </p>
   </section>        
   {{ end }}
