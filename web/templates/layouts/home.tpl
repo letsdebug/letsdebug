@@ -1,4 +1,5 @@
 {{ define "head" }}
+{{ .WorkerCount }}
 <style>
 form, form input, form select {
   font-size: 1rem;

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -27,9 +28,10 @@ var (
 )
 
 type server struct {
-	templates map[string]*template.Template
-	db        *sqlx.DB
-	workCh    chan workRequest
+	templates   map[string]*template.Template
+	db          *sqlx.DB
+	workCh      chan workRequest
+	busyWorkers int32
 
 	rateLimitByIP     map[string]*ratelimit.Bucket
 	rateLimitByDomain map[string]*ratelimit.Bucket
@@ -313,7 +315,9 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
-	s.render(w, http.StatusOK, "home.tpl", nil)
+	s.render(w, http.StatusOK, "home.tpl", map[string]interface{}{
+		"WorkerCount": template.HTML(fmt.Sprintf("<!-- Busy Workers: %d -->", atomic.LoadInt32(&s.busyWorkers))),
+	})
 }
 
 func (s *server) render(w http.ResponseWriter, statusCode int, templateName string, data interface{}) {

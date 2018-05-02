@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"log"
+	"sync/atomic"
 
 	"github.com/letsdebug/letsdebug"
 )
@@ -23,6 +24,7 @@ func (s *server) runWorkers(numWorkers int) {
 func (s *server) work() {
 	for req := range s.workCh {
 		log.Printf("Received notification: %+v", req)
+		atomic.AddInt32(&s.busyWorkers, 1)
 
 		// Ignore failure
 		s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, req.ID)
@@ -40,6 +42,7 @@ func (s *server) work() {
 			continue
 		}
 
+		atomic.AddInt32(&s.busyWorkers, -1)
 		log.Printf("Test %d complete", req.ID)
 	}
 }
