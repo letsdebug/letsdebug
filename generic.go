@@ -650,7 +650,7 @@ func translateAcmeError(domain string, err error) Problem {
 	if acmeErr, ok := err.(acme.AcmeError); ok {
 		urn := strings.TrimPrefix(acmeErr.Type, "urn:ietf:params:acme:error:")
 		switch urn {
-		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa":
+		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa", "dns":
 			return letsencryptProblem(domain, acmeErr.Detail, SeverityError)
 		// When something bad is happening on staging
 		case "serverInternal":
