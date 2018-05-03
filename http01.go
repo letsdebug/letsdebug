@@ -128,7 +128,7 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 			domain, ip.String(), res.String(), prob.Name))
 	}
 
-	if (!v6Res.IsZero() && !v6Res.IsZero()) && (v4Res.StatusCode != v6Res.StatusCode || v4Res.ServerHeader != v6Res.ServerHeader) {
+	if (!v4Res.IsZero() && !v6Res.IsZero()) && (v4Res.StatusCode != v6Res.StatusCode || v4Res.ServerHeader != v6Res.ServerHeader) {
 		probs = append(probs, v4v6Discrepancy(domain, v4Res, v6Res))
 	}
 
