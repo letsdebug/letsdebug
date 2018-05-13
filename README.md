@@ -35,19 +35,46 @@ There is a JSON-based API available as part of the web frontend.
 
 ### Submitting a test
 
-    curl --data '{"method":"http-01","domain":"letsdebug.net"}' -H 'content-type: application/json' https://letsdebug.net
-    
-    {"Domain":"letsdebug.net","ID":14}
+```bash
+$ curl --data '{"method":"http-01","domain":"letsdebug.net"}' -H 'content-type: application/json' https://letsdebug.net
+```
+```javascript
+{"Domain":"letsdebug.net","ID":14}
+```
 
 ### Viewing tests
 
-    curl -H 'accept: application/json' https://letsdebug.net/letsdebug.net/14
-
-    {"id":14,"domain":"letsdebug.net","method":"http-01","status":"Complete","created_at":"2018-04-30T01:58:34.765829Z","started_at":"2018-04-30T01:58:34.769815Z","completed_at":"2018-04-30T01:58:41.39023Z","result":{}}
+```bash
+$ curl -H 'accept: application/json' https://letsdebug.net/letsdebug.net/14
+```
+```javascript
+{"id":14,"domain":"letsdebug.net","method":"http-01","status":"Complete","created_at":"2018-04-30T01:58:34.765829Z","started_at":"2018-04-30T01:58:34.769815Z","completed_at":"2018-04-30T01:58:41.39023Z","result":{}}
+```
 
 or to view all recent tests
 
-    curl -H 'accept: application/json' https://letsdebug.net/letsdebug.net
+```bash
+$ curl -H 'accept: application/json' https://letsdebug.net/letsdebug.net
+```
+
+### Performing a query against the Certwatch database
+
+```bash
+$ curl "https://letsdebug.net/certwatch-query?q=<urlencoded SQL query>"
+```
+```javascript
+{
+  "query": "select c.id as crtsh_id, x509_subjectName(c.CERTIFICATE), x509_notAfter(c.CERTIFICATE) from certificate c where x509_notAfter(c.CERTIFICATE) = '2018-06-01 16:25:44' AND x509_issuerName(c.CERTIFICATE) LIKE 'C=US, O=Let''s Encrypt%';",
+  "results": [
+    {
+      "crtsh_id": 346300797,
+      "x509_notafter": "2018-06-01T16:25:44Z",
+      "x509_subjectname": "CN=hivdatingzimbabwe.com"
+    },
+    /* ... */
+  ]
+}
+```
 
 ## CLI Usage
 
@@ -61,7 +88,7 @@ TODO: improve documentation/releases
 
 import "github.com/letsdebug/letsdebug"
 
-problems, _ := letsdebug.Check("example.org", "http-01")
+problems, _ := letsdebug.Check("example.org", letsdebug.HTTP01)
 ```
 
 ## Installation

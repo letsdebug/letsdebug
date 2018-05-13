@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -35,6 +36,8 @@ type server struct {
 
 	rateLimitByIP     map[string]*ratelimit.Bucket
 	rateLimitByDomain map[string]*ratelimit.Bucket
+
+	rateLimitCertwatch *ratelimit.Bucket
 }
 
 // Serve begins serving the web application over LETSDEBUG_WEB_LISTEN_ADDR,
@@ -98,12 +101,66 @@ func Serve() error {
 	r.Get("/{domain}/{testID}", s.httpViewTestResult)
 	// - View all tests for domain
 	r.Get("/{domain}", s.httpViewDomain)
+	// Certwatch query gateway
+	r.Get("/certwatch-query", s.httpCertwatchQuery)
 
 	s.rateLimitByDomain = map[string]*ratelimit.Bucket{}
 	s.rateLimitByIP = map[string]*ratelimit.Bucket{}
 
 	log.Printf("Starting web server ...")
 	return http.ListenAndServe(envOrDefault("LISTEN_ADDR", "127.0.0.1:9150"), r)
+}
+
+func (s *server) httpCertwatchQuery(w http.ResponseWriter, r *http.Request) {
+	if s.rateLimitCertwatch == nil {
+		s.rateLimitCertwatch = ratelimit.NewBucket(
+			time.Duration(envOrDefaultInt("RATELIMIT_CERTWATCH_GATEWAY", 1))*time.Second, 5)
+	}
+
+	if _, avail := s.rateLimitCertwatch.TakeMaxDuration(1, 100*time.Millisecond); !avail {
+		http.Error(w, "Too busy, try again later", http.StatusTooManyRequests)
+		return
+	}
+
+	q := r.URL.Query().Get("q")
+	if q == "" || len(q) > 8192 {
+		http.Error(w, "Query missing or not acceptable", http.StatusBadRequest)
+		return
+	}
+
+	db, err := sqlx.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable connect_timeout=5")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to connect to Certwatch: %v", err), http.StatusGatewayTimeout)
+		return
+	}
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var out []map[string]interface{}
+	rows, err := db.QueryxContext(ctx, q)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Query failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+	for rows.Next() {
+		r := map[string]interface{}{}
+		if err := rows.MapScan(r); err != nil {
+			log.Printf("Failed to unmarshal certwatch row: %v", err)
+		} else {
+			out = append(out, r)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.Encode(map[string]interface{}{
+		"query":   q,
+		"results": out,
+	})
 }
 
 func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
