@@ -30,6 +30,11 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 		return nil, fmt.Errorf("DNS response for %s had fatal DNSSEC issues: %v", name, result.WhyBogus)
 	}
 
+	if result.Rcode == dns.RcodeServerFailure || result.Rcode == dns.RcodeRefused {
+		return nil, fmt.Errorf("DNS response for %s/%s did not have an acceptable response code: %s",
+			name, dns.TypeToString[rrType], dns.RcodeToString[result.Rcode])
+	}
+
 	return result.Rr, nil
 }
 
