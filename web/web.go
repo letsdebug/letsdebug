@@ -144,6 +144,8 @@ func (s *server) httpCertwatchQuery(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Query failed: %v", err), http.StatusInternalServerError)
 		return
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		r := map[string]interface{}{}
 		if err := rows.MapScan(r); err != nil {
@@ -151,6 +153,11 @@ func (s *server) httpCertwatchQuery(w http.ResponseWriter, r *http.Request) {
 		} else {
 			out = append(out, r)
 		}
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, fmt.Sprintf("Reading rows failed: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
