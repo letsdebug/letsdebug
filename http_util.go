@@ -53,7 +53,7 @@ func (r httpCheckResult) String() string {
 	lines := []string{
 		"Address Type=" + addrType,
 		"Server=" + r.ServerHeader,
-		"HTTP Status=" + strconv.Itoa(r.StatusCode),
+		"HTTP Status=" + strconv.Itoa(r.InitialStatusCode),
 	}
 	if r.NumRedirects > 0 {
 		lines = append(lines, "Number of Redirects="+strconv.Itoa(r.NumRedirects))
