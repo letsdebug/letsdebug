@@ -80,7 +80,7 @@ func (t checkHTTPTransport) RoundTrip(req *http.Request) (*http.Response, error)
 			t.result.InitialStatusCode = resp.StatusCode
 		}
 
-		t.result.Trace(fmt.Sprintf("Server response: HTTP %d %s", resp.StatusCode, resp.Status))
+		t.result.Trace(fmt.Sprintf("Server response: HTTP %s", resp.Status))
 	}
 
 	return resp, err
