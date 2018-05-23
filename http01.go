@@ -124,11 +124,15 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		} else if v6Res.IsZero() {
 			v6Res = res
 		}
-		debug = append(debug, fmt.Sprintf("Request to: %s/%s, Result: %s, Issue: %s",
-			domain, ip.String(), res.String(), prob.Name))
+		debug = append(debug, fmt.Sprintf("Request to: %s/%s, Result: %s, Issue: %s\nTrace:\n%s\n",
+			domain, ip.String(), res.String(), prob.Name, strings.Join(res.DialStack, "\n")))
 	}
 
-	if (!v4Res.IsZero() && !v6Res.IsZero()) && (v4Res.StatusCode != v6Res.StatusCode || v4Res.ServerHeader != v6Res.ServerHeader) {
+	if (!v4Res.IsZero() && !v6Res.IsZero()) &&
+		(v4Res.StatusCode != v6Res.StatusCode ||
+			v4Res.ServerHeader != v6Res.ServerHeader ||
+			v4Res.NumRedirects != v6Res.NumRedirects ||
+			v4Res.InitialStatusCode != v6Res.InitialStatusCode) {
 		probs = append(probs, v4v6Discrepancy(domain, v4Res, v6Res))
 	}
 

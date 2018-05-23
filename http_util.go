@@ -23,9 +23,21 @@ func (e redirectError) Error() string {
 }
 
 type httpCheckResult struct {
-	StatusCode   int
-	ServerHeader string
-	IP           net.IP
+	StatusCode        int
+	ServerHeader      string
+	IP                net.IP
+	InitialStatusCode int
+	NumRedirects      int
+	FirstDial         time.Time
+	DialStack         []string
+}
+
+func (r *httpCheckResult) Trace(s string) {
+	if r.FirstDial.IsZero() {
+		r.FirstDial = time.Now()
+	}
+	r.DialStack = append(r.DialStack,
+		fmt.Sprintf("@%dms: %s", time.Since(r.FirstDial).Nanoseconds()/1e6, s))
 }
 
 func (r httpCheckResult) IsZero() bool {
@@ -37,7 +49,41 @@ func (r httpCheckResult) String() string {
 	if r.IP.To4() != nil {
 		addrType = "IPv4"
 	}
-	return fmt.Sprintf("[Address Type=%s,Response Code=%d,Server=%s]", addrType, r.StatusCode, r.ServerHeader)
+
+	lines := []string{
+		"Address Type=" + addrType,
+		"Server=" + r.ServerHeader,
+		"HTTP Status=" + strconv.Itoa(r.StatusCode),
+	}
+	if r.NumRedirects > 0 {
+		lines = append(lines, "Number of Redirects="+strconv.Itoa(r.NumRedirects))
+		lines = append(lines, "Final HTTP Status="+strconv.Itoa(r.StatusCode))
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(lines, ","))
+}
+
+type checkHTTPTransport struct {
+	transport http.RoundTripper
+	result    *httpCheckResult
+}
+
+func (t checkHTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.transport.RoundTrip(req)
+
+	if t.result != nil && err != nil {
+		t.result.Trace(fmt.Sprintf("Experienced error: %v", err))
+	}
+
+	if t.result != nil && resp != nil {
+		if t.result.InitialStatusCode == 0 {
+			t.result.InitialStatusCode = resp.StatusCode
+		}
+
+		t.result.Trace(fmt.Sprintf("Server response: HTTP %d %s", resp.StatusCode, resp.Status))
+	}
+
+	return resp, err
 }
 
 func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckResult, Problem) {
@@ -45,53 +91,57 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 		Timeout: httpTimeout * time.Second,
 	}
 
-	checkRes := httpCheckResult{
-		IP: address,
+	checkRes := &httpCheckResult{
+		IP:        address,
+		DialStack: []string{},
 	}
 
 	var redirErr redirectError
-	dialStack := []string{}
 
 	cl := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				host, port, _ := net.SplitHostPort(addr)
-				host = normalizeFqdn(host)
+		Transport: checkHTTPTransport{
+			result: checkRes,
+			transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					host, port, _ := net.SplitHostPort(addr)
+					host = normalizeFqdn(host)
 
-				dialFunc := func(ip net.IP, port string) (net.Conn, error) {
-					dialStack = append(dialStack, fmt.Sprintf("> Dialing %s", ip.String()))
-					if ip.To4() == nil {
-						return dialer.DialContext(ctx, "tcp", "["+ip.String()+"]:"+port)
+					dialFunc := func(ip net.IP, port string) (net.Conn, error) {
+						checkRes.Trace(fmt.Sprintf("Dialing %s", ip.String()))
+						if ip.To4() == nil {
+							return dialer.DialContext(ctx, "tcp", "["+ip.String()+"]:"+port)
+						}
+						return dialer.DialContext(ctx, "tcp", ip.String()+":"+port)
 					}
-					return dialer.DialContext(ctx, "tcp", ip.String()+":"+port)
-				}
 
-				// Only override the address for this specific domain.
-				// We don't want to mangle redirects.
-				if host == domain {
-					return dialFunc(address, port)
-				}
+					// Only override the address for this specific domain.
+					// We don't want to mangle redirects.
+					if host == domain {
+						return dialFunc(address, port)
+					}
 
-				// For other hosts, we need to use Unbound to resolve the name
-				otherAddr, err := scanCtx.LookupRandomHTTPRecord(host)
-				if err != nil {
-					return nil, err
-				}
+					// For other hosts, we need to use Unbound to resolve the name
+					otherAddr, err := scanCtx.LookupRandomHTTPRecord(host)
+					if err != nil {
+						return nil, err
+					}
 
-				return dialFunc(otherAddr, port)
-			},
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
+					return dialFunc(otherAddr, port)
+				},
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			}},
 		// boulder: va.go fetchHTTP
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			checkRes.NumRedirects++
+
 			if len(via) >= 10 {
 				redirErr = redirectError(fmt.Sprintf("Too many (%d) redirects, last redirect was to: %s", len(via), req.URL.String()))
 				return redirErr
 			}
 
-			dialStack = append(dialStack, fmt.Sprintf("> Received redirect to %s", req.URL.String()))
+			checkRes.Trace(fmt.Sprintf("Received redirect to %s", req.URL.String()))
 
 			host := req.URL.Host
 			if _, p, err := net.SplitHostPort(host); err == nil {
@@ -120,11 +170,11 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 	}
 
 	reqURL := "http://" + domain + "/.well-known/acme-challenge/letsdebug-test"
-	dialStack = append(dialStack, fmt.Sprintf("> Making a request to %s (using initial IP %s)", reqURL, address))
+	checkRes.Trace(fmt.Sprintf("Making a request to %s (using initial IP %s)", reqURL, address))
 
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return checkRes, internalProblem(fmt.Sprintf("Failed to construct validation request: %v", err), SeverityError)
+		return *checkRes, internalProblem(fmt.Sprintf("Failed to construct validation request: %v", err), SeverityError)
 	}
 
 	req.Header.Set("Accept", "*/*")
@@ -144,12 +194,12 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 		if redirErr != "" {
 			err = redirErr
 		}
-		return checkRes, translateHTTPError(domain, address, err, dialStack)
+		return *checkRes, translateHTTPError(domain, address, err, checkRes.DialStack)
 	}
 
 	defer resp.Body.Close()
 
-	return checkRes, Problem{}
+	return *checkRes, Problem{}
 }
 
 func translateHTTPError(domain string, address net.IP, e error, dialStack []string) Problem {
