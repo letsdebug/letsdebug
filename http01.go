@@ -73,7 +73,7 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 
 // httpAccessibilityChecker checks whether an HTTP ACME validation request
 // would lead to any issues such as:
-// - Bad redireects
+// - Bad redirects
 // - IPs not listening on port 80
 type httpAccessibilityChecker struct{}
 
