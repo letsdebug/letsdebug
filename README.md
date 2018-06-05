@@ -7,7 +7,7 @@ It is motivated by [this community thread](https://community.letsencrypt.org/t/c
 ## Status/Progress
 Currently [deployed to letsdebug.net](https://letsdebug.net) but still being tested.
 
-[Track the MVP milstone](https://github.com/letsdebug/letsdebug/milestone/1).
+[Track the MVP milestone](https://github.com/letsdebug/letsdebug/milestone/1).
 
 ## Problems Detected
 
