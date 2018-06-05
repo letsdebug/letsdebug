@@ -16,7 +16,7 @@ func main() {
 
 	flag.StringVar(&domain, "domain", "example.org", "What domain to check")
 	flag.StringVar(&validationMethod, "method", "http-01", "Which validation method to assume (http-01,dns-01)")
-	flag.BoolVar(&showDebug, "debug", false, "Whether to show debug poblems")
+	flag.BoolVar(&showDebug, "debug", false, "Whether to show debug problems")
 	flag.Parse()
 
 	probs, err := letsdebug.Check(domain, letsdebug.ValidationMethod(validationMethod))
