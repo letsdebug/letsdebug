@@ -54,7 +54,7 @@ func (c txtRecordChecker) Check(ctx *scanContext, domain string, method Validati
 func txtRecordError(domain string, err error) Problem {
 	return Problem{
 		Name: "TXTRecordError",
-		Explanation: fmt.Sprintf(`An error occured while attempting to lookup the TXT record on _acme-challenge.%s . `+
+		Explanation: fmt.Sprintf(`An error occurred while attempting to lookup the TXT record on _acme-challenge.%s . `+
 			`Any resolver errors that the Let's Encrypt CA encounters on this record will cause certificate issuance to fail.`, domain),
 		Detail:   err.Error(),
 		Severity: SeverityFatal,
