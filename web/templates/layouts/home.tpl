@@ -54,6 +54,7 @@ input, select {
         <select name="method" tabindex="2" class="validation-method">
           <option value="http-01">HTTP-01</option>
           <option value="dns-01">DNS-01</option>
+          <option value="tls-alpn-01">TLS-ALPN-01</option>
           <option value="tls-sni-01">TLS-SNI-01</option>
           <option value="tls-sni-02">TLS-SNI-02</option>
         </select>    
