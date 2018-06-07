@@ -8,7 +8,10 @@
   color: black;
   background: rgba(255, 166, 0, 0.657);
 }
-.problem-Error {
+.problem-Warning a, .problem-Warning a:visited {
+  color: black;
+}
+.problem-Error, .problem-Error a, .problem-Error a:visited {
   color: #eee;
   background: rgb(155, 41, 0);
 }
@@ -16,11 +19,14 @@
   color: darkred;
   background-color: rgba(255,0,0,0.25);
 }
+.problem-Fatal a, .problem-Fatal a:visited {
+  color: darkred;
+}
 .problem-OK {
   color: #eee;
   background: rgb(0, 77, 0);
 }
-.problem-Debug {
+.problem-Debug, .problem-Debug a, .problem-Debug a:visited {
   background: lightskyblue;
   color: black;
 }
