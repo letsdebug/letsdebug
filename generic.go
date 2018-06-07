@@ -347,8 +347,8 @@ type crtList map[string]*x509.Certificate
 
 // FindCommonPSLCertificates finds any certificates which contain any DNSName
 // that shares the Registered Domain `registeredDomain`.
-func (l crtList) FindWithCommonRegisteredDomain(registeredDomain string) []*x509.Certificate {
-	var out []*x509.Certificate
+func (l crtList) FindWithCommonRegisteredDomain(registeredDomain string) sortedCertificates {
+	var out sortedCertificates
 
 	for _, cert := range l {
 		for _, name := range cert.DNSNames {
@@ -358,6 +358,8 @@ func (l crtList) FindWithCommonRegisteredDomain(registeredDomain string) []*x509
 			}
 		}
 	}
+
+	sort.Sort(out)
 
 	return out
 }
@@ -401,6 +403,14 @@ func (l crtList) CountDuplicates(domain string) map[string]int {
 // rateLimitChecker ensures that the domain is not currently affected
 // by domain-based rate limits using crtwatch's database
 type rateLimitChecker struct {
+}
+
+type sortedCertificates []*x509.Certificate
+
+func (certs sortedCertificates) Len() int      { return len(certs) }
+func (certs sortedCertificates) Swap(i, j int) { certs[i], certs[j] = certs[j], certs[i] }
+func (certs sortedCertificates) Less(i, j int) bool {
+	return certs[j].NotBefore.Before(certs[i].NotBefore)
 }
 
 const rateLimitCheckerQuery = `SELECT c.CERTIFICATE der
@@ -503,7 +513,8 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	}
 
 	if debug != "" {
-		probs = append(probs, debugProblem("RateLimit", "Certificates contributing to rate limits for this domain", debug))
+		probs = append(probs, debugProblem("RateLimit",
+			fmt.Sprintf("%d Certificates contributing to rate limits for this domain", len(certsTowardsRateLimit)), debug))
 	}
 
 	return probs, nil
