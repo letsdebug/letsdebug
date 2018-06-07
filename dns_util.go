@@ -99,17 +99,20 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"do-not-query-localhost:", "yes"},
 		{"val-clean-additional:", "yes"},
 		{"harden-algo-downgrade:", "yes"},
-		// The colon is missing here because there's a parsing bug
-		// in Unbound in at least every version upto and including 1.7.0
-		// https://github.com/NLnetLabs/unbound/blob/f39e39ed4728ea7853f6fd3e59fc5397e92fb317/util/config_file.c#L512
-		// https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=4092
-		{"use-caps-for-id", "yes"},
 	}
 
 	for _, opt := range opts {
 		// Can't ignore these because we cant silently have policies being ignored
 		if err := ub.SetOption(opt.Opt, opt.Val); err != nil {
 			return fmt.Errorf("Failed to configure unbound with option %s %v", opt.Opt, err)
+		}
+	}
+
+	// use-caps-for-id was bugged (no colon) < 1.7.1, try both ways in order to be compatible
+	// https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=4092
+	if err := ub.SetOption("use-caps-for-id:", "yes"); err != nil {
+		if err = ub.SetOption("use-caps-for-id", "yes"); err != nil {
+			return fmt.Errorf("Failed to configure unbound with use-caps-for-id: %v", err)
 		}
 	}
 
