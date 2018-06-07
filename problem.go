@@ -50,7 +50,7 @@ func hasFatalProblem(probs []Problem) bool {
 func internalProblem(message string, level SeverityLevel) Problem {
 	return Problem{
 		Name:        "InternalProblem",
-		Explanation: fmt.Sprintf("An internal error occured while checking the domain"),
+		Explanation: fmt.Sprintf("An internal error occurred while checking the domain"),
 		Detail:      message,
 		Severity:    level,
 	}
@@ -59,7 +59,7 @@ func internalProblem(message string, level SeverityLevel) Problem {
 func dnsLookupFailed(name, rrType string, err error) Problem {
 	return Problem{
 		Name:        "DNSLookupFailed",
-		Explanation: fmt.Sprintf(`A fatal issue occured during the DNS lookup process for %s/%s.`, name, rrType),
+		Explanation: fmt.Sprintf(`A fatal issue occurred during the DNS lookup process for %s/%s.`, name, rrType),
 		Detail:      err.Error(),
 		Severity:    SeverityFatal,
 	}

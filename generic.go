@@ -611,7 +611,7 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 		probsMu.Lock()
 		defer probsMu.Unlock()
 
-		probs = append(probs, internalProblem("An unknown problem occured while performing a test "+
+		probs = append(probs, internalProblem("An unknown problem occurred while performing a test "+
 			"authorization against the Let's Encrypt staging service: "+err.Error(), SeverityWarning))
 	}
 
@@ -683,7 +683,7 @@ func translateAcmeError(domain string, err error) Problem {
 			return Problem{}
 		}
 	}
-	return internalProblem(fmt.Sprintf("An unknown issue occured when performing a test authorization "+
+	return internalProblem(fmt.Sprintf("An unknown issue occurred when performing a test authorization "+
 		"against the Let's Encrypt staging service: %v", err), SeverityWarning)
 }
 

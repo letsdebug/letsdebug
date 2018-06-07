@@ -192,7 +192,7 @@ func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
 	tests, err := s.findTests(domain)
 	if err != nil {
 		log.Printf("couldn't find tests for %s: %v", domain, err)
-		doError("Internal error occured finding tests", http.StatusInternalServerError)
+		doError("Internal error occurred finding tests", http.StatusInternalServerError)
 		return
 	}
 
@@ -388,14 +388,14 @@ func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
 func (s *server) render(w http.ResponseWriter, statusCode int, templateName string, data interface{}) {
 	tpl, ok := s.templates[templateName]
 	if !ok {
-		http.Error(w, "An internal rendering error occured.", http.StatusInternalServerError)
+		http.Error(w, "An internal rendering error occurred.", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(statusCode)
 	if err := tpl.Execute(w, data); err != nil {
 		log.Printf("Error executing %s template with error: %v", templateName, err)
-		http.Error(w, "An internal rendering error occured.", http.StatusInternalServerError)
+		http.Error(w, "An internal rendering error occurred.", http.StatusInternalServerError)
 	}
 }
 

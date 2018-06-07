@@ -7,7 +7,7 @@ It is motivated by [this community thread](https://community.letsencrypt.org/t/c
 ## Status/Progress
 Currently [deployed to letsdebug.net](https://letsdebug.net) but still being tested.
 
-[Track the MVP milstone](https://github.com/letsdebug/letsdebug/milestone/1).
+[Track the MVP milestone](https://github.com/letsdebug/letsdebug/milestone/1).
 
 ## Problems Detected
 
@@ -25,7 +25,7 @@ BadRedirect | Checks that no bad HTTP redirects are present. Discovers redirects
 WebserverMisconfiguration | Checks whether the server is serving the wrong protocol on the wrong port as the result of an HTTP-01 validation request. | - |
 ANotWorking, AAAANotWorking | Checks whether listed IP addresses are not functioning properly for HTTP-01 validation, including timeouts and other classes of network and HTTP errors. | [Example](https://letsdebug.net/network-fail.foo.monkas.xyz/8) |
 IPv4IPv6Discrepancy | For domains with both A & AAAA records, checks whether there are major discrepancies between the server responses to reveal when the addresses may be pointing to different servers accidentally. | [Example](https://letsdebug.net/v4v6fail.foo.monkas.xyz/9)
-CloudflareCDN | Checks whether the domain is being served via Cloudflare's proxy service (and therefore SSL termination is occuring at Cloudflare) | - |
+CloudflareCDN | Checks whether the domain is being served via Cloudflare's proxy service (and therefore SSL termination is occurring at Cloudflare) | - |
 CloudflareSSLNotProvisioned | Checks whether the domain has its SSL terminated by Cloudflare and Cloudflare has not provisioned a certificate yet (leading to a TLS handshake error). | [Example](https://letsdebug.net/cf-no-ssl.fleetssl.com/10) |
 IssueFromLetsEncrypt | Attempts to detect issues with a high degree of accuracy via the Let's Encrypt v2 staging service by attempting to perform an authorization for the domain. Discovers issues such as CA-based domain blacklists & other policies, specific networking issues. | [Example](https://letsdebug.net/bankofamerica.com/12) |
 
