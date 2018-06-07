@@ -34,8 +34,10 @@ func (probs problems) Less(i, j int) bool {
 	p1 := probs[i]
 	p2 := probs[j]
 
+	naturalOrder := p1.Name < p2.Name
+
 	if p1.Severity == p2.Severity {
-		return true
+		return naturalOrder
 	}
 	if p1.Severity == letsdebug.SeverityDebug {
 		return false
@@ -52,7 +54,7 @@ func (probs problems) Less(i, j int) bool {
 		return true
 	}
 
-	return false
+	return naturalOrder
 }
 
 type resultView struct {

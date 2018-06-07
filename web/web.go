@@ -46,7 +46,6 @@ func Serve() error {
 	s := &server{}
 	r := chi.NewMux()
 
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
 
@@ -356,6 +355,8 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		doError(fmt.Sprintf("Too many tests for %s recently, try again soon.", domain), http.StatusTooManyRequests)
 		return
 	}
+
+	log.Printf("[%s] Submitted test for %s/%s", ip, domain, method)
 
 	id, err := s.createNewTest(domain, method, ip)
 	if err != nil {
