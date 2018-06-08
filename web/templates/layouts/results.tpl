@@ -89,7 +89,6 @@
     </form>
     {{ end }}
   </h2>
-      
 
   {{ if eq .Test.Status "Cancelled" }}
   <section class="error">
@@ -98,6 +97,12 @@
   {{ else if ne .Test.Status "Complete"}}
   <section class="description">
     The test is currently {{ .Test.Status }} ... please wait, this page will refresh automatically ...
+    {{ if .Test.IsRunningLong }}
+    <div class="warning">
+      This test has been running for a while. Usually this indicates that one or more of the domain's nameservers
+      are either inaccessible or offline. Please be patient, it may take 5-15 minutes but this test should eventually complete.
+    </div>
+    {{ end }}
   </section>
   {{ else if .Test.Result.Error }}
   <section class="results">

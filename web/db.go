@@ -104,6 +104,13 @@ func (t testView) SubmitTime() string {
 	return time.Now().Sub(t.CreatedAt).Truncate(time.Second).String()
 }
 
+func (t testView) IsRunningLong() bool {
+	if t.StartedAt == nil {
+		return false
+	}
+	return time.Now().Sub(*t.StartedAt) > time.Minute
+}
+
 func (t testView) Severity() string {
 	if t.Status != "Complete" {
 		return t.Status
@@ -237,7 +244,7 @@ func (s *server) listenForTests(dsn string) error {
 
 func (s *server) vacuumTests() {
 	for {
-		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status NOT IN ('Cancelled','Complete') AND created_at < now() - interval '10 minutes';`); err != nil {
+		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status NOT IN ('Cancelled','Complete') AND created_at < now() - interval '30 minutes';`); err != nil {
 			log.Printf("Failed to vacuum: %v", err)
 		}
 		time.Sleep(10 * time.Second)

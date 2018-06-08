@@ -39,6 +39,13 @@
       border-radius: 4px;
       padding: 1rem;
     }
+    .warning {
+      color: black;
+      background: rgba(255, 166, 0, 0.657);
+      border-radius: 4px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
   </style>
   {{ template "head" . }}
 </head>
