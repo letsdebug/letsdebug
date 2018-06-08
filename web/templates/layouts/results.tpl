@@ -129,7 +129,7 @@
     {{ range $index, $problem := .Test.Result.Problems }}
     <div class="problem problem-{{ $problem.Severity }}" id="{{ $problem.Name }}-{{ $problem.Severity }}">
       <div class="problem-header">
-          <div class="problem-name"><a href="#{{ $problem.Name }}">{{ $problem.Name }}</a></div>
+          <div class="problem-name"><a href="#{{ $problem.Name }}-{{ $problem.Severity }}">{{ $problem.Name }}</a></div>
           <div class="problem-severity">{{ $problem.Severity }}</div>    
       </div>
       <div class="problem-description">{{ $problem.Explanation }} </div>
