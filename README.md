@@ -4,10 +4,8 @@ Let's Debug is a diagnostic website, API, CLI and Go package for quickly and acc
 
 It is motivated by [this community thread](https://community.letsencrypt.org/t/creating-a-webservice-for-analysis-of-common-problems/45836).
 
-## Status/Progress
-Currently [deployed to letsdebug.net](https://letsdebug.net) but still being tested.
-
-[Track the MVP milestone](https://github.com/letsdebug/letsdebug/milestone/1).
+## Status
+Currently [deployed to letsdebug.net and regularly in use](https://letsdebug.net).
 
 ## Problems Detected
 
