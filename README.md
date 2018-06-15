@@ -1,5 +1,8 @@
 # Let's Debug
 
+[![Build Status](https://travis-ci.org/letsdebug/letsdebug.svg?branch=master)](https://travis-ci.org/letsdebug/letsdebug)
+[![godoc](https://godoc.org/github.com/letsdebug/letsdebug?status.svg)](https://godoc.org/github.com/letsdebug/letsdebug)
+
 Let's Debug is a diagnostic website, API, CLI and Go package for quickly and accurately finding and reporting issues for any domain that may prevent issuance of a Let's Encrypt SSL certificate for any ACME validation method.
 
 It is motivated by [this community thread](https://community.letsencrypt.org/t/creating-a-webservice-for-analysis-of-common-problems/45836).
@@ -76,9 +79,10 @@ $ curl "https://letsdebug.net/certwatch-query?q=<urlencoded SQL query>"
 
 ## CLI Usage
 
-TODO: improve documentation/releases
+You can download binaries for tagged releases for Linux for both the CLi and the server [from the releases page](https://github.com/letsdebug/letsdebug/releases). 
 
-    go run cmd/cli/cli.go -domain example.org -method http-01 -debug
+
+    letsdebug-cli -domain example.org -method http-01 -debug
 
 ## Library Usage
 
@@ -109,12 +113,16 @@ This package relies on a fairly recent version of libunbound.
 
 You will also need Go's [dep](https://github.com/golang/dep) dependency manager.
 
+### Releases
+You can save time by [downloading tagged releases for 64-bit Linux](https://github.com/letsdebug/letsdebug/releases). Keep in mind you will still need to have libunbound present on your system.
+
 ### Building
 
     go get -u github.com/letsdebug/letsdebug/...
     cd $GOPATH/src/github.com/letsdebug/letsdebug
-    dep ensure
-    LETSDEBUG_DEBUG=1 go run cmd/cli/cli.go -domain example.org -method http-01
+    make deps
+    make letsdebug-cli letsdebug-server
+
 
 ## Contributing
 Any contributions containing JavaScript will be discarded, but other feedback, bug reports, suggestions and enhancements are welcome - please open an issue first.
