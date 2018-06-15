@@ -22,6 +22,9 @@ server-dev-db-up:
 letsdebug-server: generate
 	go build -o letsdebug-server cmd/server/server.go
 
+letsdebug-cli:
+	go build -o letsdebug-cli cmd/cli/cli.go
+
 deploy: clean letsdebug-server
 	rsync -vhz --progress letsdebug-server root@letsdebug.net:/usr/local/bin/ && \
 	ssh root@letsdebug.net "systemctl restart letsdebug"
