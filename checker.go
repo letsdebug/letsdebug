@@ -33,7 +33,6 @@ func init() {
 			validMethodChecker{},
 			validDomainChecker{},
 			tlssni0102DisabledChecker{},
-			tlsalpnChecker{},
 			wildcardDns01OnlyChecker{},
 			statusioChecker{},
 		},

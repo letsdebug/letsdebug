@@ -25,18 +25,3 @@ func validationDisabled(method ValidationMethod, url string) Problem {
 		Severity: SeverityFatal,
 	}
 }
-
-type tlsalpnChecker struct{}
-
-func (c tlsalpnChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
-	if method != TLSALPN01 {
-		return nil, errNotApplicable
-	}
-
-	return []Problem{{
-		Name:        "ValidationMethodNotAvailable",
-		Explanation: "The TLS-ALPN validation method is not yet available.",
-		Detail:      "Keep up to date by visiting https://community.letsencrypt.org/t/tls-alpn-validation-method/63814",
-		Severity:    SeverityFatal,
-	}}, nil
-}
