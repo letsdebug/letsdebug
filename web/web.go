@@ -48,6 +48,7 @@ func Serve() error {
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
+	r.Use(cors)
 
 	// Bring up the database
 	dsn := envOrDefault("DB_DSN", "")
@@ -427,4 +428,19 @@ func isValidDomain(domain string) bool {
 		domain = domain[2:]
 	}
 	return domain != "" && len(domain) <= 230 && regexDNSName.MatchString(domain)
+}
+
+func cors(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := "*"
+		if o := r.Header.Get("origin"); o != "" {
+			origin = o
+		}
+		w.Header().Set("access-control-allow-origin", origin)
+		w.Header().Set("access-control-allowed-methods", "GET,HEAD,POST")
+		w.Header().Set("access-control-max-age", "86400")
+		w.Header().Set("access-control-allow-headers", r.Header.Get("access-control-request-headers"))
+
+		h.ServeHTTP(w, r)
+	})
 }
