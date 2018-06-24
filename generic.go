@@ -661,7 +661,7 @@ func translateAcmeError(domain string, err error) Problem {
 	if acmeErr, ok := err.(acme.AcmeError); ok {
 		urn := strings.TrimPrefix(acmeErr.Type, "urn:ietf:params:acme:error:")
 		switch urn {
-		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa", "dns":
+		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa", "dns", "connection":
 			// Boulder can send error:dns when _acme-challenge is NXDOMAIN, which is
 			// equivalent to unauthorized
 			if strings.Contains(acmeErr.Detail, "NXDOMAIN looking up TXT") {
