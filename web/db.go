@@ -101,7 +101,15 @@ func (t testView) TestDuration() string {
 }
 
 func (t testView) SubmitTime() string {
-	return time.Now().Sub(t.CreatedAt).Truncate(time.Second).String()
+	timeAgo := time.Now().Sub(t.CreatedAt)
+	if timeAgo.Hours() <= 72 {
+		return timeAgo.Truncate(time.Second).String() + " ago"
+	}
+	return t.CreatedAt.Format("Jan 2 15:04:05 2006")
+}
+
+func (t testView) CreatedTimestamp() string {
+	return t.CreatedAt.Format(time.RFC3339Nano)
 }
 
 func (t testView) IsRunningLong() bool {

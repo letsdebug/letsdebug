@@ -141,7 +141,7 @@
   </section>
   {{ end }}
   <section class="description">
-    <p class="times">Submitted <abbr title="{{ .Test.CreatedAt }}">{{ .Test.SubmitTime }} ago</abbr>.
+    <p class="times">Submitted <abbr title="{{ .Test.CreatedTimestamp }}">{{ .Test.SubmitTime }}</abbr>.
     {{ if .Test.QueueDuration }}Sat in queue for {{ .Test.QueueDuration }}.{{ end }}
     {{ if .Test.TestDuration }}Completed in {{ .Test.TestDuration }}.{{ end }}
     {{ if eq .Test.Status "Complete" }}

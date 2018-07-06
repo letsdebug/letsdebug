@@ -45,7 +45,7 @@ tr.test:nth-child(odd) {
       {{ range $index, $test := .Tests }}
       <tr class="test">
         <td style="width: 10%" class="test-id"><a href="/{{ .Domain }}/{{ $test.ID }}">#{{ $test.ID }} ({{ $test.Method }})</a></td>
-        <td style="width: 20%" class="test-date"><abbr title="{{ $test.CreatedAt }}">{{ $test.SubmitTime }} ago</abbr></td>
+        <td style="width: 20%" class="test-date"><abbr title="{{ $test.CreatedTimestamp }}">{{ $test.SubmitTime }}</abbr></td>
         <td style="width: 20%" class="test-severity severity-{{ $test.Severity }}">{{ $test.Severity }}</td>
         <td style="width: 50%" class="test-summary">{{ $test.Summary }}</td>
       </tr>
