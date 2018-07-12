@@ -29,6 +29,7 @@ IPv4IPv6Discrepancy | For domains with both A & AAAA records, checks whether the
 CloudflareCDN | Checks whether the domain is being served via Cloudflare's proxy service (and therefore SSL termination is occurring at Cloudflare) | - |
 CloudflareSSLNotProvisioned | Checks whether the domain has its SSL terminated by Cloudflare and Cloudflare has not provisioned a certificate yet (leading to a TLS handshake error). | [Example](https://letsdebug.net/cf-no-ssl.fleetssl.com/10) |
 IssueFromLetsEncrypt | Attempts to detect issues with a high degree of accuracy via the Let's Encrypt v2 staging service by attempting to perform an authorization for the domain. Discovers issues such as CA-based domain blacklists & other policies, specific networking issues. | [Example](https://letsdebug.net/bankofamerica.com/12) |
+| TXTDoubleLabel | Checks for the presence of records that are doubled up (e.g. `_acme-challenge.example.org.example.org`). Usually indicates that the user has been incorrectly creating records in their DNS user interface. | [Example](https://letsdebug.net/double.monkas.xyz/2477) |
 
 ## Web API Usage
 

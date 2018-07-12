@@ -3,8 +3,10 @@ package letsdebug
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/miekg/dns"
+	"github.com/weppos/publicsuffix-go/publicsuffix"
 )
 
 // wildcardDns01OnlyChecker ensures that a wildcard domain is only validated via dns-01.
@@ -59,4 +61,60 @@ func txtRecordError(domain string, err error) Problem {
 		Detail:   err.Error(),
 		Severity: SeverityFatal,
 	}
+}
+
+// txtDoubledLabelChecker ensures that a record for _acme-challenge.example.org.example.org
+// wasn't accidentally created
+type txtDoubledLabelChecker struct{}
+
+func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if method != DNS01 {
+		return nil, errNotApplicable
+	}
+
+	registeredDomain, _ := publicsuffix.Domain(domain)
+
+	variants := []string{
+		fmt.Sprintf("_acme-challenge.%s.%s", domain, domain),           // _acme-challenge.www.example.org.www.example.org
+		fmt.Sprintf("_acme-challenge.%s.%s", domain, registeredDomain), // _acme-challenge.www.example.org.example.org
+	}
+
+	var found []string
+	var foundMu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	for _, variant := range variants {
+		go func(q string) {
+			defer wg.Done()
+			rrs, _ := ctx.Lookup(q, dns.TypeTXT) // Don't worry if the lookup failed
+			foundMu.Lock()
+			defer foundMu.Unlock()
+			for _, rr := range rrs {
+				txt, ok := rr.(*dns.TXT)
+				if !ok {
+					continue
+				}
+				if len(txt.Txt) > 0 {
+					found = append(found, q)
+				}
+			}
+		}(variant)
+	}
+
+	wg.Wait()
+
+	if len(found) > 0 {
+		return []Problem{Problem{
+			Name: "TXTDoubleLabel",
+			Explanation: "Some DNS records were found that indicate TXT records having been incorrectly manually entered into " +
+				`DNS editor interfaces. The correct way to enter these records is to either remove the domain from the label (so ` +
+				`"_acme-challenge.example.org" is entered just as "_acme-challenge.www") or include a period (.) at the ` +
+				`end of the label (so "_acme-challenge.example.org.").`,
+			Detail:   fmt.Sprintf("The following probably-erroneous TXT records were found:\n%s", strings.Join(found, "\n")),
+			Severity: SeverityWarning,
+		}}, nil
+	}
+
+	return nil, nil
 }
