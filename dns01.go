@@ -82,7 +82,7 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 	var found []string
 	var foundMu sync.Mutex
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(len(variants))
 
 	for _, variant := range variants {
 		go func(q string) {
@@ -109,8 +109,8 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 			Name: "TXTDoubleLabel",
 			Explanation: "Some DNS records were found that indicate TXT records having been incorrectly manually entered into " +
 				`DNS editor interfaces. The correct way to enter these records is to either remove the domain from the label (so ` +
-				`"_acme-challenge.example.org" is entered just as "_acme-challenge.www") or include a period (.) at the ` +
-				`end of the label (so "_acme-challenge.example.org.").`,
+				`enter "_acme-challenge.www.example.org" just as "_acme-challenge.www") or include a period (.) at the ` +
+				`end of the label (so enter "_acme-challenge.example.org.").`,
 			Detail:   fmt.Sprintf("The following probably-erroneous TXT records were found:\n%s", strings.Join(found, "\n")),
 			Severity: SeverityWarning,
 		}}, nil
