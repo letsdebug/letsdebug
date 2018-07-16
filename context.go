@@ -17,11 +17,15 @@ type lookupResult struct {
 type scanContext struct {
 	rrs      map[string]map[uint16]lookupResult
 	rrsMutex sync.Mutex
+
+	httpRequestPath    string
+	httpExpectResponse string
 }
 
 func newScanContext() *scanContext {
 	return &scanContext{
-		rrs: map[string]map[uint16]lookupResult{},
+		rrs:             map[string]map[uint16]lookupResult{},
+		httpRequestPath: "letsdebug-test",
 	}
 }
 

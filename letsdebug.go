@@ -15,9 +15,25 @@ import (
 	"time"
 )
 
-// Check will run each checker against the domain and validation method provided.
-// It is expected that this method may take a long time to execute, and may not be cancelled.
+// Options provide additional configuration to the various checkers
+type Options struct {
+	// HTTPRequestPath alters the /.well-known/acme-challenge/letsdebug-test to
+	// /acme-challenge/acme-challenge/{{ HTTPRequestPath }}
+	HTTPRequestPath string
+	// HTTPExpectResponse causes the HTTP checker to require the remote server to
+	// respond with specific content. If the content does not match, then the test
+	// will fail with severity Error.
+	HTTPExpectResponse string
+}
+
+// Check calls CheckWithOptions with default options
 func Check(domain string, method ValidationMethod) (probs []Problem, retErr error) {
+	return CheckWithOptions(domain, method, Options{})
+}
+
+// CheckWithOptions will run each checker against the domain and validation method provided.
+// It is expected that this method may take a long time to execute, and may not be cancelled.
+func CheckWithOptions(domain string, method ValidationMethod, opts Options) (probs []Problem, retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = fmt.Errorf("panic: %v", r)
@@ -25,6 +41,12 @@ func Check(domain string, method ValidationMethod) (probs []Problem, retErr erro
 	}()
 
 	ctx := newScanContext()
+	if opts.HTTPRequestPath != "" {
+		ctx.httpRequestPath = opts.HTTPRequestPath
+	}
+	if opts.HTTPExpectResponse != "" {
+		ctx.httpExpectResponse = opts.HTTPExpectResponse
+	}
 
 	domain = normalizeFqdn(domain)
 

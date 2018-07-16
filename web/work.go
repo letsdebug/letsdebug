@@ -9,9 +9,10 @@ import (
 )
 
 type workRequest struct {
-	ID     int
-	Domain string
-	Method string
+	ID      int
+	Domain  string
+	Method  string
+	Options options
 }
 
 func (s *server) runWorkers(numWorkers int) {
@@ -29,7 +30,10 @@ func (s *server) work() {
 		// Ignore failure
 		s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, req.ID)
 
-		res, err := letsdebug.Check(req.Domain, letsdebug.ValidationMethod(req.Method))
+		res, err := letsdebug.CheckWithOptions(req.Domain, letsdebug.ValidationMethod(req.Method), letsdebug.Options{
+			HTTPExpectResponse: req.Options.HTTPExpectResponse,
+			HTTPRequestPath:    req.Options.HTTPRequestPath,
+		})
 		result := resultView{Problems: res}
 		if err != nil {
 			result.Error = err.Error()

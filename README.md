@@ -44,6 +44,19 @@ $ curl --data '{"method":"http-01","domain":"letsdebug.net"}' -H 'content-type: 
 {"Domain":"letsdebug.net","ID":14}
 ```
 
+### Submitting a test with custom options
+
+```bash
+curl --data '{"method":"http-01","domain":"letsdebug.net","options":{"http_request_path":"custom-path","http_expect_response":"abc123"}}' -H 'content-type: application/json' https://letsdebug.net
+```
+
+Available options are as follows:
+
+| Option | Description | Example Value
+-------|-------------|--------|
+`http_request_path` | What path within `/.well-known/acme-challenge/` to use instead of `letsdebug-test` (default) for the HTTP check. Max length 255. |
+`http_expect_response` | What exact response to expect from each server during the HTTP check. By default, no particular response is expected. If present and the response does not match, the test will fail with an Error severity. It is highly recommended to always use a completely random value. Max length 255. |
+
 ### Viewing tests
 
 ```bash

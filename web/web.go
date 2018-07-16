@@ -275,6 +275,7 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	var domain, method string
+	var opts options
 
 	isBrowser := true
 
@@ -295,16 +296,22 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	case "application/json":
 		isBrowser = false
 		var testRequest struct {
-			Domain string
-			Method string
+			Domain  string  `json:"domain"`
+			Method  string  `json:"method"`
+			Options options `json:"options"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&testRequest); err != nil {
 			log.Printf("Error decoding request: %v", err)
 			doError("Request body was not valid JSON", http.StatusBadRequest)
 			return
 		}
+		if len(testRequest.Options.HTTPRequestPath) > 255 || len(testRequest.Options.HTTPExpectResponse) > 255 {
+			doError("Test options were not valid", http.StatusBadRequest)
+			return
+		}
 		domain = testRequest.Domain
 		method = testRequest.Method
+		opts = testRequest.Options
 	default:
 		doError(http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
 		return
@@ -359,7 +366,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[%s] Submitted test for %s/%s", ip, domain, method)
 
-	id, err := s.createNewTest(domain, method, ip)
+	id, err := s.createNewTest(domain, method, ip, opts)
 	if err != nil {
 		log.Printf("Failed to create test for %s/%s: %v\n", domain, method, err)
 		doError(http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

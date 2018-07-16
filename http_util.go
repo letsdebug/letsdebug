@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -169,7 +171,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 		},
 	}
 
-	reqURL := "http://" + domain + "/.well-known/acme-challenge/letsdebug-test"
+	reqURL := "http://" + domain + "/.well-known/acme-challenge/" + scanCtx.httpRequestPath
 	checkRes.Trace(fmt.Sprintf("Making a request to %s (using initial IP %s)", reqURL, address))
 
 	req, err := http.NewRequest("GET", reqURL, nil)
@@ -198,6 +200,24 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 	}
 
 	defer resp.Body.Close()
+
+	// If we expect a certain response, check for it
+	if scanCtx.httpExpectResponse != "" {
+		r := io.LimitReader(resp.Body, int64(len(scanCtx.httpExpectResponse)+2))
+
+		buf, err := ioutil.ReadAll(r)
+		if err != nil {
+			return *checkRes, translateHTTPError(domain, address,
+				fmt.Errorf(`This test expected the server to respond with "%s" but instead we experienced an error reading the response: %v`,
+					scanCtx.httpExpectResponse, err),
+				checkRes.DialStack)
+		} else if respStr := string(buf); respStr != scanCtx.httpExpectResponse {
+			return *checkRes, translateHTTPError(domain, address,
+				fmt.Errorf(`This test expected the server to respond with "%s" but instead we got a response beginning with "%s"`,
+					scanCtx.httpExpectResponse, respStr),
+				checkRes.DialStack)
+		}
+	}
 
 	return *checkRes, Problem{}
 }

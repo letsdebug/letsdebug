@@ -2,6 +2,7 @@ package web
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"log"
 	"sort"
@@ -78,6 +79,7 @@ type testView struct {
 	ID            uint64      `db:"id,omitempty" json:"id,omitempty"`
 	Domain        string      `db:"domain,omitempty" json:"domain,omitempty"`
 	Method        string      `db:"method,omitempty" json:"method,omitempty"`
+	Options       options     `db:"options,omitempty" json:"-"`
 	Status        string      `db:"status,omitempty" json:"status,omitempty"`
 	CreatedAt     time.Time   `db:"created_at,omitempty" json:"created_at,omitempty"`
 	StartedAt     *time.Time  `db:"started_at,omitempty" json:"started_at,omitempty"`
@@ -168,6 +170,30 @@ func (t testView) Summary() string {
 	return fmt.Sprintf("%d fatal errors, %d errors and %d warnings", fatalCount, errorCount, warningCount)
 }
 
+type options struct {
+	HTTPRequestPath    string `json:"http_request_path"`
+	HTTPExpectResponse string `json:"http_expect_response"`
+}
+
+func (o options) Value() (driver.Value, error) {
+	return json.Marshal(o)
+}
+
+func (o *options) Scan(src interface{}) error {
+	buf, ok := src.([]byte)
+	if !ok {
+		return nil
+	}
+
+	var out options
+	if err := json.Unmarshal(buf, &out); err != nil {
+		return err
+	}
+
+	*o = out
+	return nil
+}
+
 func (s *server) migrateUp() error {
 	names, _ := AssetDir("db_migrations")
 	res := bindata.Resource(names, func(name string) ([]byte, error) {
@@ -195,10 +221,10 @@ func (s *server) migrateUp() error {
 	return nil
 }
 
-func (s *server) createNewTest(domain, method, ip string) (uint64, error) {
+func (s *server) createNewTest(domain, method, ip string, opts options) (uint64, error) {
 	var newID uint64
-	if err := s.db.QueryRow(`INSERT INTO tests (domain, method, status, submitted_by_ip) VALUES ($1, $2, 'Queued', $3) RETURNING id;`,
-		domain, method, ip).Scan(&newID); err != nil {
+	if err := s.db.QueryRow(`INSERT INTO tests (domain, method, status, submitted_by_ip, options) VALUES ($1, $2, 'Queued', $3, $4) RETURNING id;`,
+		domain, method, ip, opts).Scan(&newID); err != nil {
 		return 0, err
 	}
 	return newID, nil

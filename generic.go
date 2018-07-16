@@ -477,7 +477,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	}
 	if err := rows.Err(); err != nil {
 		return []Problem{
-			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityWarning),
+			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityDebug),
 		}, nil
 	}
 
