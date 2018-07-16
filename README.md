@@ -52,7 +52,7 @@ curl --data '{"method":"http-01","domain":"letsdebug.net","options":{"http_reque
 
 Available options are as follows:
 
-| Option | Description
+| Option | Description |
 -------|-------------|--------|
 `http_request_path` | What path within `/.well-known/acme-challenge/` to use instead of `letsdebug-test` (default) for the HTTP check. Max length 255. |
 `http_expect_response` | What exact response to expect from each server during the HTTP check. By default, no particular response is expected. If present and the response does not match, the test will fail with an Error severity. It is highly recommended to always use a completely random value. Max length 255. |
