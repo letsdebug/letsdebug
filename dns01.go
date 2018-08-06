@@ -1,7 +1,9 @@
 package letsdebug
 
 import (
+	"crypto/rand"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -80,37 +82,73 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 	}
 
 	var found []string
-	var foundMu sync.Mutex
-	var wg sync.WaitGroup
-	wg.Add(len(variants))
+	distinctCombined := map[string]struct{}{}
+	var randomCombined string
 
+	var foundMu sync.Mutex
+
+	var wg sync.WaitGroup
+	wg.Add(len(variants) + 1)
+
+	doQuery := func(q string) ([]string, string) {
+		found := []string{}
+		combined := []string{}
+		rrs, _ := ctx.Lookup(q, dns.TypeTXT)
+		for _, rr := range rrs {
+			txt, ok := rr.(*dns.TXT)
+			if !ok {
+				continue
+			}
+			found = append(found, txt.String())
+			combined = append(combined, txt.Txt...)
+		}
+		sort.Strings(combined)
+		return found, strings.Join(combined, "\n")
+	}
+
+	// Check the double label variants
 	for _, variant := range variants {
 		go func(q string) {
 			defer wg.Done()
-			rrs, _ := ctx.Lookup(q, dns.TypeTXT) // Don't worry if the lookup failed
+
+			values, combined := doQuery(q)
+			if len(values) == 0 {
+				return
+			}
+
 			foundMu.Lock()
 			defer foundMu.Unlock()
-			for _, rr := range rrs {
-				txt, ok := rr.(*dns.TXT)
-				if !ok {
-					continue
-				}
-				if len(txt.Txt) > 0 {
-					found = append(found, q)
-				}
-			}
+
+			found = append(found, values...)
+			distinctCombined[combined] = struct{}{}
 		}(variant)
 	}
 
+	// Check the response for a random subdomain, to detect the presence of a wildcard TXT record
+	go func() {
+		defer wg.Done()
+
+		nonce := make([]byte, 4)
+		rand.Read(nonce)
+		_, randomCombined = doQuery(fmt.Sprintf("_acme-challenge.%s.%s", fmt.Sprintf("rand-%x", nonce), domain))
+	}()
+
 	wg.Wait()
+
+	// If a randomized subdomain has the exact same non-empty TXT response as any of the "double labels", then
+	// we are probably dealing with a wildcard TXT record in the zone, and it is probably not a meaningful
+	// misconfiguration. In this case, say nothing.
+	if _, ok := distinctCombined[randomCombined]; ok && randomCombined != "" {
+		return nil, nil
+	}
 
 	if len(found) > 0 {
 		return []Problem{Problem{
 			Name: "TXTDoubleLabel",
-			Explanation: "Some DNS records were found that indicate TXT records having been incorrectly manually entered into " +
+			Explanation: "Some DNS records were found that indicate TXT records may have been incorrectly manually entered into " +
 				`DNS editor interfaces. The correct way to enter these records is to either remove the domain from the label (so ` +
-				`enter "_acme-challenge.www.example.org" just as "_acme-challenge.www") or include a period (.) at the ` +
-				`end of the label (so enter "_acme-challenge.example.org.").`,
+				`enter "_acme-challenge.www.example.org" as "_acme-challenge.www") or include a period (.) at the ` +
+				`end of the label (enter "_acme-challenge.example.org.").`,
 			Detail:   fmt.Sprintf("The following probably-erroneous TXT records were found:\n%s", strings.Join(found, "\n")),
 			Severity: SeverityWarning,
 		}}, nil
