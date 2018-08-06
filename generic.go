@@ -484,14 +484,14 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	var debug string
 
 	// Limit: Certificates per Registered Domain
-	// TODO: implement Renewal Excemption
+	// TODO: implement Renewal Exemption
 	certsTowardsRateLimit := certs.FindWithCommonRegisteredDomain(registeredDomain)
-	if len(certs) > 0 && len(certsTowardsRateLimit) >= 20 {
+	if len(certs) > 0 && len(certsTowardsRateLimit) >= 50 {
 		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
 		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
 
 		probs = append(probs, rateLimited(domain, fmt.Sprintf("The 'Certificates per Registered Domain' limit ("+
-			"20 certificates per week that share the same Registered Domain: %s) has been exceeded. "+
+			"50 certificates per week that share the same Registered Domain: %s) has been exceeded. "+
 			"There is no way to work around this rate limit. "+
 			"The next non-renewal certificate for this Registered Domain should be issuable after %v (%v from now).",
 			registeredDomain, dropOff, dropOffDiff)))
