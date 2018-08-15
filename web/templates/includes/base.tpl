@@ -46,15 +46,23 @@
       padding: 1rem;
       margin: 1rem 0;
     }
+    footer {
+      font-size: 0.8rem;
+    }
   </style>
   {{ template "head" . }}
 </head>
 <body>
   {{ template "body" . }}
   <footer>
-    <a href="https://github.com/letsdebug/letsdebug" target="_blank" rel="noopener noreferrer">Find us at github.com/letsdebug -
-      we have an API and command line tool as well.</a>
-    Let's Encrypt™ is a trademark of the Internet Security Research Group. 
+    <p>We also have open-source
+      <a href="https://github.com/letsdebug/letsdebug" target="_blank" rel="noopener noreferrer">API and CLI tools</a>,
+      as well as
+      <a href="https://tools.letsdebug.net/cert-search" target="_blank" rel="noopener noreferrer">web-based certificate search</a>
+      and
+      <a href="https://tools.letsdebug.net/cert-revoke" target="_blank" rel="noopener noreferrer">certificate revocation.</a>
+    </p>
+    <p>Let's Encrypt™ is a trademark of the Internet Security Research Group. </p>
   </footer>
 </body>
 </html>
