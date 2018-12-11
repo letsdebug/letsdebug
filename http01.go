@@ -9,6 +9,10 @@ import (
 	"github.com/miekg/dns"
 )
 
+var (
+	likelyModemRouters = []string{"micro_httpd", "cisco-IOS"}
+)
+
 // dnsAChecker checks if there are any issues in Unbound looking up the A and
 // AAAA records for a domain (such as DNSSEC issues or dead nameservers)
 type dnsAChecker struct{}
@@ -138,6 +142,23 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 
 	probs = append(probs, debugProblem("HTTPCheck", "Requests made to the domain", strings.Join(debug, "\n")))
 
+	if isLikelyModemRouter(v4Res) || isLikelyModemRouter(v6Res) {
+		header := v4Res.ServerHeader
+		if header == "" {
+			header = v6Res.ServerHeader
+		}
+		probs = append(probs, Problem{
+			Name: "PortForwarding",
+			Explanation: "A request to your domain revealed that the web server that responded may be " +
+				"the administrative interface of a modem or router. This can indicate an issue with the port forwarding " +
+				"setup on that modem or router. You may need to reconfigure the device to properly forward traffic to your " +
+				"intended webserver.",
+			Detail: fmt.Sprintf(`The web server that responded identified itself as "%s", `+
+				"which is a known webserver commonly used by modems/routers.", header),
+			Severity: SeverityWarning,
+		})
+	}
+
 	return probs, nil
 }
 
@@ -173,4 +194,13 @@ func v4v6Discrepancy(domain string, v4Result, v6Result httpCheckResult) Problem 
 		Detail:   fmt.Sprintf("%s vs %s", v4Result.String(), v6Result.String()),
 		Severity: SeverityWarning,
 	}
+}
+
+func isLikelyModemRouter(resp httpCheckResult) bool {
+	for _, toMatch := range likelyModemRouters {
+		if resp.ServerHeader == toMatch {
+			return true
+		}
+	}
+	return false
 }
