@@ -258,7 +258,7 @@ func aaaaNotWorking(domain, ipv6Address string, err error, dialStack []string) P
 	return Problem{
 		Name: "AAAANotWorking",
 		Explanation: fmt.Sprintf(`%s has an AAAA (IPv6) record (%s) but a test request to this address over port 80 did not succeed. `+
-			`Let's Encrypt will prefer to use AAAA records, if present, and will not fall back to IPv4 records. `+
+			`Your web server must have at least one working IPv4 or IPv6 address. `+
 			`You should either ensure that validation requests to this domain succeed over IPv6, or remove its AAAA record.`,
 			domain, ipv6Address),
 		Detail:   fmt.Sprintf("%s\n\nTrace:\n%s", err.Error(), strings.Join(dialStack, "\n")),
@@ -269,7 +269,8 @@ func aaaaNotWorking(domain, ipv6Address string, err error, dialStack []string) P
 func aNotWorking(domain, addr string, err error, dialStack []string) Problem {
 	return Problem{
 		Name: "ANotWorking",
-		Explanation: fmt.Sprintf(`%s has an A (IPv4) record (%s) but a request to this address over port 80 did not succeed.`,
+		Explanation: fmt.Sprintf(`%s has an A (IPv4) record (%s) but a request to this address over port 80 did not succeed. `+
+			`Your web server must have at least one working IPv4 or IPv6 address.`,
 			domain, addr),
 		Detail:   fmt.Sprintf("%s\n\nTrace:\n%s", err.Error(), strings.Join(dialStack, "\n")),
 		Severity: SeverityError,

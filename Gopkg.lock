@@ -3,87 +3,108 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:6f8976712e205a4892283d07e631470cd4e5e5667032106d4edbec6df8ac9611"
   name = "github.com/eggsampler/acme"
   packages = ["."]
+  pruneopts = ""
   revision = "0fbde87256e6fd6e75cb701bafcca9eddaee87c9"
 
 [[projects]]
+  digest = "1:2f4d4ba08e54c0c63693d7dd21c30c8ff6800d047efcbbe8addd5620d2625871"
   name = "github.com/go-chi/chi"
   packages = [
     ".",
-    "middleware"
+    "middleware",
   ]
+  pruneopts = ""
   revision = "e83ac2304db3c50cf03d96a2fcd39009d458bc35"
   version = "v3.3.2"
 
 [[projects]]
+  digest = "1:a53effe959542818285d7adee00ee2807babee2ea8b82956fe4a4cab60c34bd5"
   name = "github.com/golang-migrate/migrate"
   packages = [
     ".",
     "database",
     "database/postgres",
     "source",
-    "source/go-bindata"
+    "source/go-bindata",
   ]
+  pruneopts = ""
   revision = "22f249514de9aa3f8a720a7cabbdd45d294f83a1"
   version = "v3.2.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:b8776d99ac570b2cec6152d3491ad78b70d93843c5a2c7fa4e0496a7cec45e19"
   name = "github.com/jmoiron/sqlx"
   packages = [
     ".",
-    "reflectx"
+    "reflectx",
   ]
+  pruneopts = ""
   revision = "2aeb6a910c2b94f2d5eb53d9895d80e27264ec41"
 
 [[projects]]
+  digest = "1:d26c006cbf54ca5c040463d5678013169e2bd91fb62c2f960ae283a1723d4278"
   name = "github.com/juju/ratelimit"
   packages = ["."]
+  pruneopts = ""
   revision = "59fac5042749a5afb9af70e813da1dd5474f0167"
   version = "1.0.1"
 
 [[projects]]
   branch = "master"
+  digest = "1:8f0ecac344e2c0a4a55df0306994ed2ce3b9e9598da959ce4e5831aaa05f1e1e"
   name = "github.com/lib/pq"
   packages = [
     ".",
-    "oid"
+    "oid",
   ]
+  pruneopts = ""
   revision = "d34b9ff171c21ad295489235aec8b6626023cd04"
 
 [[projects]]
+  digest = "1:4e1406b4eb2fab0bd64f9a3534e626009cb3490e0fc11839f50882261397be04"
   name = "github.com/miekg/dns"
   packages = ["."]
+  pruneopts = ""
   revision = "83c435cc65d2862736428b9b4d07d0ab10ad3e4d"
   version = "v1.0.5"
 
 [[projects]]
   branch = "master"
+  digest = "1:e0170dfcc7ce61072d52e35595746d580d14cf11120938ddaff3a847149eff7b"
   name = "github.com/miekg/unbound"
   packages = ["."]
+  pruneopts = ""
   revision = "e2b53b2dbcba70761a419d805d9d6f4ee6e1b0e4"
 
 [[projects]]
+  digest = "1:cef44d71d12614e2124f597a66b3a2d28e7f4c5fe17a81b4993d1b2d3d88530d"
   name = "github.com/weppos/publicsuffix-go"
   packages = [
     "net/publicsuffix",
-    "publicsuffix"
+    "publicsuffix",
   ]
+  pruneopts = ""
   revision = "386050f8211b04c965721c3591e7d96650a1ea86"
   version = "v0.4.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:47ff8b3229cff95d3cf3738c7a8461fdeacd3f46801e54d301a62500605ce202"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
-    "ed25519/internal/edwards25519"
+    "ed25519/internal/edwards25519",
   ]
+  pruneopts = ""
   revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
 
 [[projects]]
   branch = "master"
+  digest = "1:e578690e68b81d979995373286a9625f00c0381a67ed86e10334ace86d780d91"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -91,11 +112,13 @@
     "internal/iana",
     "internal/socket",
     "ipv4",
-    "ipv6"
+    "ipv6",
   ]
+  pruneopts = ""
   revision = "d41e8174641f662c5a2d1c7a5f9e828788eb8706"
 
 [[projects]]
+  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -111,14 +134,30 @@
     "unicode/bidi",
     "unicode/cldr",
     "unicode/norm",
-    "unicode/rangetable"
+    "unicode/rangetable",
   ]
+  pruneopts = ""
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7d34ff5c142701166bc5cb00a017f2f90e1c6377f05610a84f5234701af7d70d"
+  input-imports = [
+    "github.com/eggsampler/acme",
+    "github.com/go-chi/chi",
+    "github.com/go-chi/chi/middleware",
+    "github.com/golang-migrate/migrate",
+    "github.com/golang-migrate/migrate/database/postgres",
+    "github.com/golang-migrate/migrate/source/go-bindata",
+    "github.com/jmoiron/sqlx",
+    "github.com/juju/ratelimit",
+    "github.com/lib/pq",
+    "github.com/miekg/dns",
+    "github.com/miekg/unbound",
+    "github.com/weppos/publicsuffix-go/net/publicsuffix",
+    "github.com/weppos/publicsuffix-go/publicsuffix",
+    "golang.org/x/net/idna",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
