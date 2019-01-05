@@ -1,6 +1,6 @@
 language: go
 go:
-  - '1.11.3'
+  - '1.11.4'
 before_install:
   - sudo apt-get update
   - sudo apt-get -y install libunbound-dev make
