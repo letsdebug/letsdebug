@@ -439,7 +439,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable connect_timeout=5")
 	if err != nil {
 		return []Problem{
-			internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityWarning),
+			internalProblem(fmt.Sprintf("Failed to connect to certwatch database to check rate limits: %v", err), SeverityDebug),
 		}, nil
 	}
 	defer db.Close()
@@ -454,7 +454,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	rows, err := db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+registeredDomain, time.Now().Add(-7*24*time.Hour))
 	if err != nil && err != sql.ErrNoRows {
 		return []Problem{
-			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityWarning),
+			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityDebug),
 		}, nil
 	}
 
@@ -465,12 +465,12 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	var certBytes []byte
 	for rows.Next() {
 		if err := rows.Scan(&certBytes); err != nil {
-			probs = append(probs, internalProblem(fmt.Sprintf("Failed to query certwatch database while checking rate limits: %v", err), SeverityWarning))
+			probs = append(probs, internalProblem(fmt.Sprintf("Failed to query certwatch database while checking rate limits: %v", err), SeverityDebug))
 			break
 		}
 		crt, err := x509.ParseCertificate(certBytes)
 		if err != nil {
-			probs = append(probs, internalProblem(fmt.Sprintf("Failed to parse certificate while checking rate limits: %v", err), SeverityWarning))
+			probs = append(probs, internalProblem(fmt.Sprintf("Failed to parse certificate while checking rate limits: %v", err), SeverityDebug))
 			continue
 		}
 		certs[crt.SerialNumber.String()] = crt
