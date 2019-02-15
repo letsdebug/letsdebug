@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	likelyModemRouters = []string{"micro_httpd", "cisco-IOS"}
+	likelyModemRouters = []string{"micro_httpd", "cisco-IOS", "LANCOM"}
 )
 
 // dnsAChecker checks if there are any issues in Unbound looking up the A and
