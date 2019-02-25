@@ -163,7 +163,6 @@ func (s *server) httpCertwatchQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(map[string]interface{}{
@@ -207,6 +206,7 @@ func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("content-type", "application/json")
 	if err := json.NewEncoder(w).Encode(tests); err != nil {
 		log.Printf("failed to marshal test list: %v", err)
 	}
@@ -270,6 +270,7 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("content-type", "application/json")
 	if err := json.NewEncoder(w).Encode(test); err != nil {
 		log.Printf("Error encoding test result response: %v", err)
 	}
@@ -384,6 +385,7 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 		Domain string
 		ID     uint64
 	}{domain, id}
+	w.Header().Set("content-type", "application/json")
 	if err := json.NewEncoder(w).Encode(testResponse); err != nil {
 		log.Printf("Error encoding submit test response: %v", err)
 	}
