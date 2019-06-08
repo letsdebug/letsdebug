@@ -105,6 +105,8 @@ func Serve() error {
 	r.Get("/certwatch-query", s.httpCertwatchQuery)
 	// Favicon
 	r.Get("/favicon.ico", s.httpServeFavicon)
+	// Robots.txt
+	r.Get("/robots.txt", s.httpServeRobots)
 
 	s.rateLimitByDomain = map[string]*ratelimit.Bucket{}
 	s.rateLimitByIP = map[string]*ratelimit.Bucket{}
@@ -461,4 +463,14 @@ var favicon = []byte("GIF89a@\x00@\x00\xf3\x0e\x00+;h+;i,;h+<h+<i+=i,<h-<h,<i-<i
 func (s *server) httpServeFavicon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/gif")
 	w.Write(favicon)
+}
+
+const robotsTxt = `User-Agent: *
+Allow: /$
+Disallow: /
+`
+
+func (s *server) httpServeRobots(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprint(w, robotsTxt)
 }

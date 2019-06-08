@@ -1,4 +1,5 @@
 {{ define "head" }}
+<meta name="robots" content="noindex" />
 <style>
 .results {
   padding: 1rem 0;

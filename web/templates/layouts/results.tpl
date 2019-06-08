@@ -1,4 +1,5 @@
 {{ define "head" }}
+<meta name="robots" content="noindex" />
 <style>
 .problem {
   padding: 1rem;
