@@ -26,6 +26,10 @@ var (
 )
 
 func init() {
+	// Since the OFAC SDN checker polls, we need to initialize it
+	ofac := &ofacSanctionChecker{}
+	ofac.setup()
+
 	// We want to launch the slowest checkers as early as possible,
 	// unless they have a dependency on an earlier checker
 	checkers = []checker{
@@ -35,6 +39,7 @@ func init() {
 			tlssni0102DisabledChecker{},
 			wildcardDns01OnlyChecker{},
 			statusioChecker{},
+			ofac,
 		},
 
 		asyncCheckerBlock{

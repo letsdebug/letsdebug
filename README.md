@@ -31,6 +31,7 @@ CloudflareSSLNotProvisioned | Checks whether the domain has its SSL terminated b
 IssueFromLetsEncrypt | Attempts to detect issues with a high degree of accuracy via the Let's Encrypt v2 staging service by attempting to perform an authorization for the domain. Discovers issues such as CA-based domain blacklists & other policies, specific networking issues. | [Example](https://letsdebug.net/bankofamerica.com/12) |
 | TXTDoubleLabel | Checks for the presence of records that are doubled up (e.g. `_acme-challenge.example.org.example.org`). Usually indicates that the user has been incorrectly creating records in their DNS user interface. | [Example](https://letsdebug.net/double.monkas.xyz/2477) |
 PortForwarding | Checks whether the domain is serving a modem-router administrative interface instead of an intended webserver, which is indicative of a port-forwarding misconfiguration. | [Example](https://letsdebug.net/cdkauffmannnextcloud.duckdns.org/11450) |
+| SanctionedDomain | Checks whether the Registered Domain is present on the [USG OFAC SDN List](https://sanctionssearch.ofac.treas.gov/). Updated daily. | [Example](https://letsdebug.net/unomasuno.com.mx/48081) |
 ## Web API Usage
 
 There is a JSON-based API available as part of the web frontend.

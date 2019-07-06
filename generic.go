@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"encoding/pem"
+	"encoding/xml"
 	"io/ioutil"
 	"net"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"fmt"
 
 	"net/http"
+	"net/url"
 
 	"time"
 
@@ -695,4 +697,143 @@ func letsencryptProblem(domain, detail string, severity SeverityLevel) Problem {
 		Detail:   detail,
 		Severity: severity,
 	}
+}
+
+// ofacSanctionChecker checks whether a Registered Domain is present on the the XML sanctions list
+// (https://www.treasury.gov/ofac/downloads/sdn.xml).
+// It is disabled by default, and must be enabled with the environment variable LETSDEBUG_ENABLE_OFAC=1
+type ofacSanctionChecker struct {
+	muRefresh sync.RWMutex
+	domains   map[string]struct{}
+}
+
+func (c *ofacSanctionChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if os.Getenv("LETSDEBUG_ENABLE_OFAC") != "1" {
+		return nil, nil
+	}
+	c.muRefresh.RLock()
+	defer c.muRefresh.RUnlock()
+
+	rd, _ := publicsuffix.EffectiveTLDPlusOne(domain)
+	for sanctionedRD := range c.domains {
+		if rd != sanctionedRD {
+			continue
+		}
+
+		return []Problem{{
+			Name: "SanctionedDomain",
+			Explanation: fmt.Sprintf("The Registered Domain %s was found on the United States' OFAC "+
+				"Specially Designated Nationals and Blocked Persons (SDN) List. Let's Encrypt are unable to issue certificates "+
+				"for sanctioned entities. Search on https://sanctionssearch.ofac.treas.gov/ for futher details.", sanctionedRD),
+			Severity: SeverityError,
+		}}, nil
+	}
+
+	return nil, nil
+}
+
+func (c *ofacSanctionChecker) setup() {
+	if os.Getenv("LETSDEBUG_ENABLE_OFAC") != "1" {
+		return
+	}
+	c.domains = map[string]struct{}{}
+	go func() {
+		for {
+			if err := c.poll(); err != nil {
+				fmt.Printf("OFAC SDN poller failed: %v\n", err)
+			}
+			time.Sleep(24 * time.Hour)
+		}
+	}()
+}
+
+func (c *ofacSanctionChecker) poll() error {
+	req, _ := http.NewRequest(http.MethodGet, "https://www.treasury.gov/ofac/downloads/sdn.xml", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", "Let's Debug (https://letsdebug.net)")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	dec := xml.NewDecoder(resp.Body)
+
+	registeredDomains := map[string]struct{}{}
+	isID := false
+	for {
+		tok, _ := dec.Token()
+		if tok == nil {
+			break
+		}
+
+		switch el := tok.(type) {
+		case xml.StartElement:
+			if el.Name.Local == "id" {
+				isID = true
+				break
+			}
+			if el.Name.Local == "idType" {
+				next, _ := dec.Token()
+				if next == nil {
+					break
+				}
+				raw, ok := next.(xml.CharData)
+				if !ok {
+					break
+				}
+				if string(raw) != "Website" {
+					isID = false
+					break
+				}
+				break
+			}
+			if el.Name.Local == "idNumber" && isID {
+				next, _ := dec.Token()
+				if next == nil {
+					break
+				}
+				raw, ok := next.(xml.CharData)
+				if !ok {
+					break
+				}
+				if rd := c.extractRegisteredDomain(string(raw)); rd != "" {
+					registeredDomains[rd] = struct{}{}
+				}
+			}
+		case xml.EndElement:
+			if el.Name.Local == "id" {
+				isID = false
+				break
+			}
+		}
+	}
+
+	c.muRefresh.Lock()
+	defer c.muRefresh.Unlock()
+
+	c.domains = registeredDomains
+
+	return nil
+}
+
+func (c *ofacSanctionChecker) extractRegisteredDomain(d string) string {
+	d = strings.ToLower(strings.TrimSpace(d))
+	if len(d) == 0 {
+		return ""
+	}
+	// If there's a protocol or path, then we need to parse the URL and extract the host
+	if strings.Contains(d, "/") {
+		u, err := url.Parse(d)
+		if err != nil {
+			return ""
+		}
+		d = u.Host
+	}
+	d, _ = publicsuffix.EffectiveTLDPlusOne(d)
+	return d
 }
