@@ -63,6 +63,10 @@ func Serve() error {
 		return err
 	}
 
+	// Create the channel early to avoid a race
+	// between listenForTests and runWorkers
+	s.workCh = make(chan workRequest)
+
 	// Listen for test inserts
 	go func() {
 		if err := s.listenForTests(dsn); err != nil {

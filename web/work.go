@@ -16,7 +16,6 @@ type workRequest struct {
 }
 
 func (s *server) runWorkers(numWorkers int) {
-	s.workCh = make(chan workRequest)
 	for i := 0; i < numWorkers; i++ {
 		go s.work()
 	}
