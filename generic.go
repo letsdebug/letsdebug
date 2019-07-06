@@ -709,7 +709,7 @@ type ofacSanctionChecker struct {
 
 func (c *ofacSanctionChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	if os.Getenv("LETSDEBUG_ENABLE_OFAC") != "1" {
-		return nil, nil
+		return nil, errNotApplicable
 	}
 	c.muRefresh.RLock()
 	defer c.muRefresh.RUnlock()
