@@ -538,8 +538,8 @@ func rateLimited(domain, detail string) Problem {
 // Let's Encrypt's staging server and parse the error urn
 // to see if there's anything interesting reported.
 type acmeStagingChecker struct {
-	client   acme.AcmeClient
-	account  acme.AcmeAccount
+	client   acme.Client
+	account  acme.Account
 	clientMu sync.Mutex
 }
 
@@ -572,7 +572,7 @@ func (c *acmeStagingChecker) buildAcmeClient() error {
 		return err
 	}
 
-	c.account = acme.AcmeAccount{PrivateKey: pk, Url: out.URL}
+	c.account = acme.Account{PrivateKey: pk, URL: out.URL}
 	c.client = cl
 
 	return nil
@@ -596,7 +596,7 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 	probs := []Problem{}
 
-	order, err := c.client.NewOrder(c.account, []acme.AcmeIdentifier{acme.AcmeIdentifier{Type: "dns", Value: domain}})
+	order, err := c.client.NewOrder(c.account, []acme.Identifier{acme.Identifier{Type: "dns", Value: domain}})
 	if err != nil {
 		if p := translateAcmeError(domain, err); p.Name != "" {
 			probs = append(probs, p)
@@ -650,17 +650,17 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 	if len(authzFailures) > 0 {
 		probs = append(probs, debugProblem("LetsEncryptStaging",
-			fmt.Sprintf("Challenge update failures for %s in order %s", domain, order.Url),
+			fmt.Sprintf("Challenge update failures for %s in order %s", domain, order.URL),
 			strings.Join(authzFailures, "\n")))
 	} else {
-		probs = append(probs, debugProblem("LetsEncryptStaging", "Order for "+domain, order.Url))
+		probs = append(probs, debugProblem("LetsEncryptStaging", "Order for "+domain, order.URL))
 	}
 
 	return probs, nil
 }
 
 func translateAcmeError(domain string, err error) Problem {
-	if acmeErr, ok := err.(acme.AcmeError); ok {
+	if acmeErr, ok := err.(acme.Problem); ok {
 		urn := strings.TrimPrefix(acmeErr.Type, "urn:ietf:params:acme:error:")
 		switch urn {
 		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa", "dns", "connection":

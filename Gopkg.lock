@@ -2,23 +2,23 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:6f8976712e205a4892283d07e631470cd4e5e5667032106d4edbec6df8ac9611"
+  digest = "1:f5717b1ecebf41aef3d52a42d9ef18e45e9def2efacf2e77b7403bf15b9262d6"
   name = "github.com/eggsampler/acme"
   packages = ["."]
   pruneopts = ""
-  revision = "0fbde87256e6fd6e75cb701bafcca9eddaee87c9"
+  revision = "8751de3af9e2fcff24f57e7caf9d18c3980fcd8b"
+  version = "v2.0.1"
 
 [[projects]]
-  digest = "1:2f4d4ba08e54c0c63693d7dd21c30c8ff6800d047efcbbe8addd5620d2625871"
+  digest = "1:55d7786e315a68ad27227a9800ebed9c48a23379de13358ab9a331ae8fe39283"
   name = "github.com/go-chi/chi"
   packages = [
     ".",
     "middleware",
   ]
   pruneopts = ""
-  revision = "e83ac2304db3c50cf03d96a2fcd39009d458bc35"
-  version = "v3.3.2"
+  revision = "da24bba8dcd4021cafac38724bf10dccc97c3e36"
+  version = "v4.0.2"
 
 [[projects]]
   digest = "1:a53effe959542818285d7adee00ee2807babee2ea8b82956fe4a4cab60c34bd5"
@@ -35,15 +35,15 @@
   version = "v3.2.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b8776d99ac570b2cec6152d3491ad78b70d93843c5a2c7fa4e0496a7cec45e19"
+  digest = "1:4611e727460d3634059cbe6e0a4799aaeb426ef8150e3b26056c83e1106831c4"
   name = "github.com/jmoiron/sqlx"
   packages = [
     ".",
     "reflectx",
   ]
   pruneopts = ""
-  revision = "2aeb6a910c2b94f2d5eb53d9895d80e27264ec41"
+  revision = "d161d7a76b5661016ad0b085869f77fd410f3e6a"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:d26c006cbf54ca5c040463d5678013169e2bd91fb62c2f960ae283a1723d4278"
@@ -54,23 +54,24 @@
   version = "1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8f0ecac344e2c0a4a55df0306994ed2ce3b9e9598da959ce4e5831aaa05f1e1e"
+  digest = "1:a65d93f562c7d66d8db6f0c5df8ade208e0f42d9a9626924896697351ca161b3"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
+    "scram",
   ]
   pruneopts = ""
-  revision = "d34b9ff171c21ad295489235aec8b6626023cd04"
+  revision = "bc6a3c0594130b1e34005880bc600b6d3f49fa7f"
+  version = "v1.1.1"
 
 [[projects]]
-  digest = "1:4e1406b4eb2fab0bd64f9a3534e626009cb3490e0fc11839f50882261397be04"
+  digest = "1:0b6694f306890ddbb69c96a16776510bd24e07436fae3f9b0a4e5b650f1e6fb7"
   name = "github.com/miekg/dns"
   packages = ["."]
   pruneopts = ""
-  revision = "83c435cc65d2862736428b9b4d07d0ab10ad3e4d"
-  version = "v1.0.5"
+  revision = "b13675009d59c97f3721247d9efa8914e1866a5b"
+  version = "v1.1.15"
 
 [[projects]]
   branch = "master"
@@ -93,18 +94,18 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:47ff8b3229cff95d3cf3738c7a8461fdeacd3f46801e54d301a62500605ce202"
+  digest = "1:086760278d762dbb0e9a26e09b57f04c89178c86467d8d94fae47d64c222f328"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
     "ed25519/internal/edwards25519",
   ]
   pruneopts = ""
-  revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
+  revision = "4def268fd1a49955bfb3dda92fe3db4f924f2285"
 
 [[projects]]
   branch = "master"
-  digest = "1:e578690e68b81d979995373286a9625f00c0381a67ed86e10334ace86d780d91"
+  digest = "1:31cd6e3c114e17c5f0c9e8b0bcaa3025ab3c221ce36323c7ce1acaa753d0d0aa"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -115,16 +116,29 @@
     "ipv6",
   ]
   pruneopts = ""
-  revision = "d41e8174641f662c5a2d1c7a5f9e828788eb8706"
+  revision = "da137c7871d730100384dbcf36e6f8fa493aef5b"
 
 [[projects]]
-  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
+  branch = "master"
+  digest = "1:2579a16d8afda9c9a475808c13324f5e572852e8927905ffa15bb14e71baba4f"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows",
+  ]
+  pruneopts = ""
+  revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
+
+[[projects]]
+  digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
   name = "golang.org/x/text"
   packages = [
     "collate",
     "collate/build",
     "internal/colltab",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
     "internal/tag",
     "internal/triegen",
     "internal/ucd",
@@ -137,8 +151,8 @@
     "unicode/rangetable",
   ]
   pruneopts = ""
-  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
-  version = "v0.3.0"
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
 
 [solve-meta]
   analyzer-name = "dep"
