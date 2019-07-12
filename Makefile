@@ -10,6 +10,9 @@ deps:
 generate:
 	go generate ./...
 
+test:
+	go test -v ./...
+
 server-dev: generate
 	LETSDEBUG_WEB_DEBUG=1 \
 	LETSDEBUG_WEB_DB_DSN="user=letsdebug dbname=letsdebug password=password sslmode=disable" \
