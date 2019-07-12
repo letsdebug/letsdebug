@@ -100,6 +100,8 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"val-clean-additional:", "yes"},
 		{"harden-algo-downgrade:", "yes"},
 		{"edns-buffer-size:", "512"},
+		{"val-sig-skew-min:", "0"},
+		{"val-sig-skew-max:", "0"},
 	}
 
 	for _, opt := range opts {
