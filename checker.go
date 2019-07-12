@@ -98,7 +98,7 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 		select {
 		case result := <-resultCh:
 			if result.Error != nil && result.Error != errNotApplicable {
-				debug("[%s] Exiting async via error\n", id, id)
+				debug("[%s] Exiting async via error\n", id)
 				return nil, result.Error
 			}
 			if len(result.Problems) > 0 {
