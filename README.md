@@ -32,6 +32,7 @@ IssueFromLetsEncrypt | Attempts to detect issues with a high degree of accuracy 
 | TXTDoubleLabel | Checks for the presence of records that are doubled up (e.g. `_acme-challenge.example.org.example.org`). Usually indicates that the user has been incorrectly creating records in their DNS user interface. | [Example](https://letsdebug.net/double.monkas.xyz/2477) |
 PortForwarding | Checks whether the domain is serving a modem-router administrative interface instead of an intended webserver, which is indicative of a port-forwarding misconfiguration. | [Example](https://letsdebug.net/cdkauffmannnextcloud.duckdns.org/11450) |
 | SanctionedDomain | Checks whether the Registered Domain is present on the [USG OFAC SDN List](https://sanctionssearch.ofac.treas.gov/). Updated daily. | [Example](https://letsdebug.net/unomasuno.com.mx/48081) |
+| BlockedByNginxTestCookie | Checks whether the HTTP-01 validation requests are being intercepted by [testcookie-nginx-module](https://github.com/kyprizel/testcookie-nginx-module). | [Example](https://letsdebug.net/13513427185.ifastnet.org/51860) |
 ## Web API Usage
 
 There is a JSON-based API available as part of the web frontend.

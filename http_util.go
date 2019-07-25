@@ -32,6 +32,7 @@ type httpCheckResult struct {
 	NumRedirects      int
 	FirstDial         time.Time
 	DialStack         []string
+	Content           []byte
 }
 
 func (r *httpCheckResult) Trace(s string) {
@@ -53,6 +54,7 @@ func (r httpCheckResult) String() string {
 	}
 
 	lines := []string{
+		"Address=" + r.IP.String(),
 		"Address Type=" + addrType,
 		"Server=" + r.ServerHeader,
 		"HTTP Status=" + strconv.Itoa(r.InitialStatusCode),
@@ -201,11 +203,17 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 
 	defer resp.Body.Close()
 
+	maxLen := 1024
+	if l := len(scanCtx.httpExpectResponse) + 2; l > maxLen {
+		maxLen = l
+	}
+	r := io.LimitReader(resp.Body, int64(maxLen))
+
+	buf, err := ioutil.ReadAll(r)
+	checkRes.Content = buf
+
 	// If we expect a certain response, check for it
 	if scanCtx.httpExpectResponse != "" {
-		r := io.LimitReader(resp.Body, int64(len(scanCtx.httpExpectResponse)+2))
-
-		buf, err := ioutil.ReadAll(r)
 		if err != nil {
 			return *checkRes, translateHTTPError(domain, address,
 				fmt.Errorf(`This test expected the server to respond with "%s" but instead we experienced an error reading the response: %v`,

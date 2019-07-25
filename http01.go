@@ -1,6 +1,7 @@
 package letsdebug
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"strings"
@@ -10,7 +11,11 @@ import (
 )
 
 var (
-	likelyModemRouters = []string{"micro_httpd", "cisco-IOS", "LANCOM"}
+	likelyModemRouters              = []string{"micro_httpd", "cisco-IOS", "LANCOM"}
+	isLikelyNginxTestcookiePayloads = [][]byte{
+		[]byte(`src="/aes.js"`),
+		[]byte(`src="/aes.min.js"`),
+		[]byte(`var a=toNumbers`)}
 )
 
 // dnsAChecker checks if there are any issues in Unbound looking up the A and
@@ -159,6 +164,23 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		})
 	}
 
+	if is4, is6 := isLikelyNginxTestcookie(v4Res), isLikelyNginxTestcookie(v6Res); is4 || is6 {
+		addr := v4Res.IP.String()
+		if is6 {
+			addr = v6Res.IP.String()
+		}
+		probs = append(probs, Problem{
+			Name: "BlockedByNginxTestCookie",
+			Explanation: "The validation request to this domain was blocked by a deployment of the nginx " +
+				"testcookie module (https://github.com/kyprizel/testcookie-nginx-module). This module is designed to " +
+				"block robots, and causes the Let's Encrypt validation process to fail. The server administrator can " +
+				"solve this issue by disabling the module (`testcookie off;`) for requests under the path of `/.well-known" +
+				"/acme-challenge/`.",
+			Detail:   fmt.Sprintf("The server at %s produced this result.", addr),
+			Severity: SeverityError,
+		})
+	}
+
 	return probs, nil
 }
 
@@ -199,6 +221,15 @@ func v4v6Discrepancy(domain string, v4Result, v6Result httpCheckResult) Problem 
 func isLikelyModemRouter(resp httpCheckResult) bool {
 	for _, toMatch := range likelyModemRouters {
 		if resp.ServerHeader == toMatch {
+			return true
+		}
+	}
+	return false
+}
+
+func isLikelyNginxTestcookie(resp httpCheckResult) bool {
+	for _, needle := range isLikelyNginxTestcookiePayloads {
+		if bytes.Contains(resp.Content, needle) {
 			return true
 		}
 	}
