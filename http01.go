@@ -116,42 +116,37 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		return probs, nil
 	}
 
-	// Track one response from IPv4 and one response from IPv6
-	// in order to check whether they might be pointing to different servers
-	var v4Res httpCheckResult
-	var v6Res httpCheckResult
+	// Track whether responses differ between any of the A/AAAA addresses
+	// for the domain
+	allCheckResults := []httpCheckResult{}
 
 	var debug []string
 
 	for _, ip := range ips {
 		res, prob := checkHTTP(ctx, domain, ip)
+		allCheckResults = append(allCheckResults, res)
 		if !prob.IsZero() {
 			probs = append(probs, prob)
-		}
-		if v4Res.IsZero() && ip.To4() != nil {
-			v4Res = res
-		} else if v6Res.IsZero() {
-			v6Res = res
 		}
 		debug = append(debug, fmt.Sprintf("Request to: %s/%s, Result: %s, Issue: %s\nTrace:\n%s\n",
 			domain, ip.String(), res.String(), prob.Name, strings.Join(res.DialStack, "\n")))
 	}
 
-	if (!v4Res.IsZero() && !v6Res.IsZero()) &&
-		(v4Res.StatusCode != v6Res.StatusCode ||
-			v4Res.ServerHeader != v6Res.ServerHeader ||
-			v4Res.NumRedirects != v6Res.NumRedirects ||
-			v4Res.InitialStatusCode != v6Res.InitialStatusCode) {
-		probs = append(probs, v4v6Discrepancy(domain, v4Res, v6Res))
+	firstResult := allCheckResults[0]
+	if len(allCheckResults) > 1 {
+		for _, otherResult := range allCheckResults[1:] {
+			if firstResult.StatusCode != otherResult.StatusCode ||
+				firstResult.ServerHeader != otherResult.ServerHeader ||
+				firstResult.NumRedirects != otherResult.NumRedirects ||
+				firstResult.InitialStatusCode != otherResult.InitialStatusCode {
+				probs = append(probs, multipleIPAddressDiscrepancy(domain, firstResult, otherResult))
+			}
+		}
 	}
 
 	probs = append(probs, debugProblem("HTTPCheck", "Requests made to the domain", strings.Join(debug, "\n")))
 
-	if isLikelyModemRouter(v4Res) || isLikelyModemRouter(v6Res) {
-		header := v4Res.ServerHeader
-		if header == "" {
-			header = v6Res.ServerHeader
-		}
+	if res := isLikelyModemRouter(allCheckResults); !res.IsZero() {
 		probs = append(probs, Problem{
 			Name: "PortForwarding",
 			Explanation: "A request to your domain revealed that the web server that responded may be " +
@@ -159,16 +154,12 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 				"setup on that modem or router. You may need to reconfigure the device to properly forward traffic to your " +
 				"intended webserver.",
 			Detail: fmt.Sprintf(`The web server that responded identified itself as "%s", `+
-				"which is a known webserver commonly used by modems/routers.", header),
+				"which is a known webserver commonly used by modems/routers.", res.ServerHeader),
 			Severity: SeverityWarning,
 		})
 	}
 
-	if is4, is6 := isLikelyNginxTestcookie(v4Res), isLikelyNginxTestcookie(v6Res); is4 || is6 {
-		addr := v4Res.IP.String()
-		if is6 {
-			addr = v6Res.IP.String()
-		}
+	if res := isLikelyNginxTestcookie(allCheckResults); !res.IsZero() {
 		probs = append(probs, Problem{
 			Name: "BlockedByNginxTestCookie",
 			Explanation: "The validation request to this domain was blocked by a deployment of the nginx " +
@@ -176,7 +167,7 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 				"block robots, and causes the Let's Encrypt validation process to fail. The server administrator can " +
 				"solve this issue by disabling the module (`testcookie off;`) for requests under the path of `/.well-known" +
 				"/acme-challenge/`.",
-			Detail:   fmt.Sprintf("The server at %s produced this result.", addr),
+			Detail:   fmt.Sprintf("The server at %s produced this result.", res.IP.String()),
 			Severity: SeverityError,
 		})
 	}
@@ -206,32 +197,36 @@ func reservedAddress(name, address string) Problem {
 	}
 }
 
-func v4v6Discrepancy(domain string, v4Result, v6Result httpCheckResult) Problem {
+func multipleIPAddressDiscrepancy(domain string, result1, result2 httpCheckResult) Problem {
 	return Problem{
-		Name: "IPv4IPv6Discrepancy",
-		Explanation: fmt.Sprintf(`%s has both AAAA (IPv6) and A (IPv4) records. While they both appear to be accessible on the network, `+
+		Name: "MultipleIPAddressDiscrepancy",
+		Explanation: fmt.Sprintf(`%s has multiple IP addresses in its DNS records. While they appear to be accessible on the network, `+
 			`we have detected that they produce differing results when sent an ACME HTTP validation request. This may indicate that `+
-			`the IPv4 and IPv6 addresses may unintentionally point to different servers, which would cause validation to fail.`,
+			`some of the IP addresses may unintentionally point to different servers, which would cause validation to fail.`,
 			domain),
-		Detail:   fmt.Sprintf("%s vs %s", v4Result.String(), v6Result.String()),
+		Detail:   fmt.Sprintf("%s vs %s", result1.String(), result2.String()),
 		Severity: SeverityWarning,
 	}
 }
 
-func isLikelyModemRouter(resp httpCheckResult) bool {
-	for _, toMatch := range likelyModemRouters {
-		if resp.ServerHeader == toMatch {
-			return true
+func isLikelyModemRouter(results []httpCheckResult) httpCheckResult {
+	for _, res := range results {
+		for _, toMatch := range likelyModemRouters {
+			if res.ServerHeader == toMatch {
+				return res
+			}
 		}
 	}
-	return false
+	return httpCheckResult{}
 }
 
-func isLikelyNginxTestcookie(resp httpCheckResult) bool {
-	for _, needle := range isLikelyNginxTestcookiePayloads {
-		if bytes.Contains(resp.Content, needle) {
-			return true
+func isLikelyNginxTestcookie(results []httpCheckResult) httpCheckResult {
+	for _, res := range results {
+		for _, needle := range isLikelyNginxTestcookiePayloads {
+			if bytes.Contains(res.Content, needle) {
+				return res
+			}
 		}
 	}
-	return false
+	return httpCheckResult{}
 }
