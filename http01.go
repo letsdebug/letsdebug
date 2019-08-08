@@ -132,9 +132,17 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 			domain, ip.String(), res.String(), prob.Name, strings.Join(res.DialStack, "\n")))
 	}
 
-	firstResult := allCheckResults[0]
-	if len(allCheckResults) > 1 {
-		for _, otherResult := range allCheckResults[1:] {
+	// Filter out the servers that didn't respond at all
+	var nonZeroResults []httpCheckResult
+	for _, v := range allCheckResults {
+		if v.IsZero() {
+			continue
+		}
+		nonZeroResults = append(nonZeroResults, v)
+	}
+	firstResult := nonZeroResults[0]
+	if len(nonZeroResults) > 1 {
+		for _, otherResult := range nonZeroResults[1:] {
 			if firstResult.StatusCode != otherResult.StatusCode ||
 				firstResult.ServerHeader != otherResult.ServerHeader ||
 				firstResult.NumRedirects != otherResult.NumRedirects ||
