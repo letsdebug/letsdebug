@@ -470,8 +470,7 @@ func (s *server) httpServeFavicon(w http.ResponseWriter, r *http.Request) {
 }
 
 const robotsTxt = `User-Agent: *
-Allow: /$
-Disallow: /
+Allow: /
 `
 
 func (s *server) httpServeRobots(w http.ResponseWriter, r *http.Request) {
