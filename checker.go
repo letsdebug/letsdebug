@@ -80,7 +80,7 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 		go func(task checker, ctx *scanContext, domain string, method ValidationMethod) {
 			defer func() {
 				if r := recover(); r != nil {
-					resultCh <- asyncResult{nil, fmt.Errorf("Check paniced: %v", r)}
+					resultCh <- asyncResult{nil, fmt.Errorf("Check %T paniced: %v", task, r)}
 				}
 			}()
 			t := reflect.TypeOf(task)
