@@ -140,8 +140,8 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		}
 		nonZeroResults = append(nonZeroResults, v)
 	}
-	firstResult := nonZeroResults[0]
 	if len(nonZeroResults) > 1 {
+		firstResult := nonZeroResults[0]
 		for _, otherResult := range nonZeroResults[1:] {
 			if firstResult.StatusCode != otherResult.StatusCode ||
 				firstResult.ServerHeader != otherResult.ServerHeader ||
