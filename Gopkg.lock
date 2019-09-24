@@ -82,15 +82,15 @@
   revision = "e2b53b2dbcba70761a419d805d9d6f4ee6e1b0e4"
 
 [[projects]]
-  digest = "1:fb107ff9c68960b5c6c53b4a23f3ec54fc2a60a21db37ad4f99755cf87ed2742"
+  digest = "1:e4f38c75b26946c70eece9e8e328d499c35671d3f12954621efb503c93a6e3ab"
   name = "github.com/weppos/publicsuffix-go"
   packages = [
     "net/publicsuffix",
     "publicsuffix",
   ]
   pruneopts = ""
-  revision = "08143ed89ef846df3e579a9630ca375f1714dd19"
-  version = "v0.5.0"
+  revision = "662a387e70fd7cfa7b7cd85eb107218b0b7a7b0d"
+  version = "v0.10.0"
 
 [[projects]]
   branch = "master"
