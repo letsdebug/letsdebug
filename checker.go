@@ -14,13 +14,11 @@ type ValidationMethod string
 const (
 	HTTP01    ValidationMethod = "http-01"     // HTTP01 represents the ACME http-01 validation method.
 	DNS01     ValidationMethod = "dns-01"      // DNS01 represents the ACME dns-01 validation method.
-	TLSSNI01  ValidationMethod = "tls-sni-01"  // TLSSNI01 represents the ACME tls-sni-01 validation method.
-	TLSSNI02  ValidationMethod = "tls-sni-02"  // TLSSNI02 represents the ACME tls-sni-02 validation method.
 	TLSALPN01 ValidationMethod = "tls-alpn-01" // TLSALPN01 represents the ACME tls-alpn-01 validation method.
 )
 
 var (
-	validMethods     = map[ValidationMethod]bool{HTTP01: true, DNS01: true, TLSSNI01: true, TLSSNI02: true, TLSALPN01: true}
+	validMethods     = map[ValidationMethod]bool{HTTP01: true, DNS01: true, TLSALPN01: true}
 	errNotApplicable = errors.New("Checker not applicable for this domain and method")
 	checkers         []checker
 )
@@ -36,7 +34,6 @@ func init() {
 		asyncCheckerBlock{
 			validMethodChecker{},
 			validDomainChecker{},
-			tlssni0102DisabledChecker{},
 			wildcardDns01OnlyChecker{},
 			statusioChecker{},
 			ofac,

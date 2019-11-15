@@ -39,7 +39,6 @@ func TestWildcards(t *testing.T) {
 	checkers := []checker{
 		validMethodChecker{},
 		validDomainChecker{},
-		tlssni0102DisabledChecker{},
 		wildcardDns01OnlyChecker{},
 		caaChecker{},
 		&rateLimitChecker{},
