@@ -22,6 +22,9 @@ import (
 	"github.com/juju/ratelimit"
 	"github.com/letsdebug/letsdebug"
 	"golang.org/x/net/idna"
+
+	// Export pprof on :9151 to investigate some memory leaks
+	_ "net/http/pprof"
 )
 
 var (
@@ -114,6 +117,10 @@ func Serve() error {
 
 	s.rateLimitByDomain = map[string]*ratelimit.Bucket{}
 	s.rateLimitByIP = map[string]*ratelimit.Bucket{}
+
+	go func() {
+		http.ListenAndServe(envOrDefault("PPROF_LISTEN_ADDR", "127.0.0.1:9151"), nil)
+	}()
 
 	log.Printf("Starting web server ...")
 	return http.ListenAndServe(envOrDefault("LISTEN_ADDR", "127.0.0.1:9150"), r)
