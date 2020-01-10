@@ -415,18 +415,29 @@ func (certs sortedCertificates) Less(i, j int) bool {
 	return certs[j].NotBefore.Before(certs[i].NotBefore)
 }
 
-const rateLimitCheckerQuery = `SELECT c.CERTIFICATE der
-FROM certificate c
-WHERE c.ID IN (
-	SELECT DISTINCT ci.CERTIFICATE_ID FROM certificate_identity ci
-	WHERE reverse(lower(ci.NAME_VALUE)) LIKE reverse(lower($1))
-	AND ci.name_type = 'dNSName'
-	AND ci.ISSUER_CA_ID IN (16418)
-)
-AND x509_notBefore(c.CERTIFICATE) >= $2
-ORDER BY x509_notBefore(c.CERTIFICATE) DESC
-OFFSET 0 LIMIT 100;
-`
+const rateLimitCheckerQuery = `
+WITH ci AS
+  (SELECT min(sub.CERTIFICATE_ID) ID,
+          min(sub.ISSUER_CA_ID) ISSUER_CA_ID,
+          sub.CERTIFICATE DER
+   FROM
+     (SELECT *
+      FROM certificate_and_identities cai
+      WHERE plainto_tsquery($1) @@ identities(cai.CERTIFICATE)
+        AND cai.NAME_VALUE ILIKE ('%' || $1 || '%')
+        AND x509_notBefore(cai.CERTIFICATE) >= $2
+        AND cai.issuer_ca_id = 16418
+      LIMIT 1000) sub
+   GROUP BY sub.CERTIFICATE)
+SELECT ci.DER der
+FROM ci
+LEFT JOIN LATERAL
+  (SELECT min(ctle.ENTRY_TIMESTAMP) ENTRY_TIMESTAMP
+   FROM ct_log_entry ctle
+   WHERE ctle.CERTIFICATE_ID = ci.ID ) le ON TRUE,
+                                             ca
+WHERE ci.ISSUER_CA_ID = ca.ID
+ORDER BY le.ENTRY_TIMESTAMP DESC;`
 
 // Pointer receiver because we're keeping state across runs
 func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
