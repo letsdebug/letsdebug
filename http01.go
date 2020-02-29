@@ -16,6 +16,12 @@ var (
 		[]byte(`src="/aes.js"`),
 		[]byte(`src="/aes.min.js"`),
 		[]byte(`var a=toNumbers`)}
+	isHTTP497Payloads = [][]byte{
+		// httpd: https://github.com/apache/httpd/blob/e820d1ea4d3f1f5152574dbaa13979887a5c14b7/modules/ssl/ssl_engine_kernel.c#L322
+		[]byte("You're speaking plain HTTP to an SSL-enabled server port"),
+		// nginx: https://github.com/nginx/nginx/blob/15544440425008d5ad39a295b826665ad56fdc90/src/http/ngx_http_special_response.c#L274
+		[]byte("400 The plain HTTP request was sent to HTTPS port"),
+	}
 )
 
 // dnsAChecker checks if there are any issues in Unbound looking up the A and
@@ -180,6 +186,17 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		})
 	}
 
+	if res := isHTTP497(allCheckResults); !res.IsZero() {
+		probs = append(probs, Problem{
+			Name: "HttpOnHttpsPort",
+			Explanation: "A validation request to this domain resulted in an HTTP request being made to a port that expects " +
+				"to receive HTTPS requests. This could be the result of an incorrect redirect (such as to http://example.com:443/) " +
+				"or it could be the result of a webserver misconfiguration, such as trying to enable SSL on a port 80 virtualhost.",
+			Detail:   strings.Join(res.DialStack, "\n"),
+			Severity: SeverityError,
+		})
+	}
+
 	return probs, nil
 }
 
@@ -231,6 +248,17 @@ func isLikelyModemRouter(results []httpCheckResult) httpCheckResult {
 func isLikelyNginxTestcookie(results []httpCheckResult) httpCheckResult {
 	for _, res := range results {
 		for _, needle := range isLikelyNginxTestcookiePayloads {
+			if bytes.Contains(res.Content, needle) {
+				return res
+			}
+		}
+	}
+	return httpCheckResult{}
+}
+
+func isHTTP497(results []httpCheckResult) httpCheckResult {
+	for _, res := range results {
+		for _, needle := range isHTTP497Payloads {
 			if bytes.Contains(res.Content, needle) {
 				return res
 			}
