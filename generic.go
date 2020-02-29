@@ -423,9 +423,9 @@ WITH ci AS
    FROM
      (SELECT *
       FROM certificate_and_identities cai
-      WHERE plainto_tsquery($1) @@ identities(cai.CERTIFICATE)
-        AND cai.NAME_VALUE ILIKE ('%' || $1 || '%')
-        AND x509_notBefore(cai.CERTIFICATE) >= $2
+      WHERE plainto_tsquery('%s') @@ identities(cai.CERTIFICATE)
+        AND cai.NAME_VALUE ILIKE ('%%%s%%')
+        AND x509_notBefore(cai.CERTIFICATE) >= '%s'
         AND cai.issuer_ca_id = 16418
       LIMIT 1000) sub
    GROUP BY sub.CERTIFICATE)
@@ -464,7 +464,10 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	rows, err := db.QueryContext(timeoutCtx, rateLimitCheckerQuery, "%"+registeredDomain, time.Now().Add(-7*24*time.Hour))
+	// Avoiding using a prepared statement here because it's being weird with crt.sh
+	q := fmt.Sprintf(rateLimitCheckerQuery,
+		registeredDomain, registeredDomain, time.Now().Add(-168*time.Hour).Format(time.RFC3339))
+	rows, err := db.QueryContext(timeoutCtx, q)
 	if err != nil && err != sql.ErrNoRows {
 		return []Problem{
 			internalProblem(fmt.Sprintf("Failed to query certwatch database to check rate limits: %v", err), SeverityDebug),
