@@ -301,6 +301,16 @@ func cloudflareSslNotProvisioned(domain string) Problem {
 // statusioChecker ensures there is no reported operational problem with the Let's Encrypt service via the status.io public api.
 type statusioChecker struct{}
 
+// statusioSignificantStatuses denotes which statuses warrant raising a warning.
+// 100 (operational) and 200 (undocumented but assume "Planned Maintenance") should not be included.
+// https://kb.status.io/developers/status-codes/
+var statusioSignificantStatuses = map[int]bool{
+	300: true, // Degraded Performance
+	400: true, // Partial Service Disruption
+	500: true, // Service Disruption
+	600: true, // Security Event
+}
+
 func (c statusioChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 
@@ -311,7 +321,7 @@ func (c statusioChecker) Check(ctx *scanContext, domain string, method Validatio
 	}
 	defer resp.Body.Close()
 
-	statusioApiResp := struct {
+	apiResp := struct {
 		Result struct {
 			StatusOverall struct {
 				Updated    time.Time `json:"updated"`
@@ -321,16 +331,16 @@ func (c statusioChecker) Check(ctx *scanContext, domain string, method Validatio
 		} `json:"result"`
 	}{}
 
-	if err := json.NewDecoder(resp.Body).Decode(&statusioApiResp); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return probs, fmt.Errorf("error decoding status.io api response: %v", err)
 	}
 
-	if statusioApiResp.Result.StatusOverall.StatusCode != 100 {
-		probs = append(probs, statusioNotOperational(statusioApiResp.Result.StatusOverall.Status, statusioApiResp.Result.StatusOverall.Updated))
+	if statusioSignificantStatuses[apiResp.Result.StatusOverall.StatusCode] {
+		probs = append(probs, statusioNotOperational(apiResp.Result.StatusOverall.Status, apiResp.Result.StatusOverall.Updated))
 	}
 
 	probs = append(probs, debugProblem("StatusIO", "The current status.io status for Let's Encrypt",
-		fmt.Sprintf("%v", statusioApiResp.Result.StatusOverall.Status)))
+		fmt.Sprintf("%v", apiResp.Result.StatusOverall.Status)))
 
 	return probs, nil
 }
