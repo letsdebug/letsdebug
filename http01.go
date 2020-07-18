@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	likelyModemRouters              = []string{"micro_httpd", "cisco-IOS", "LANCOM"}
+	likelyModemRouters              = []string{"micro_httpd", "cisco-IOS", "LANCOM", "Mini web server 1.0 ZTE corp 2005."}
 	isLikelyNginxTestcookiePayloads = [][]byte{
 		[]byte(`src="/aes.js"`),
 		[]byte(`src="/aes.min.js"`),
