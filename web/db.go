@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -166,8 +167,40 @@ func (t testView) Summary() string {
 			warningCount++
 		}
 	}
-
 	return fmt.Sprintf("%d fatal errors, %d errors and %d warnings", fatalCount, errorCount, warningCount)
+}
+
+func (t testView) LongSummary() string {
+	if t.Result == nil {
+		return "-"
+	}
+	if t.Result.Error != "" {
+		return t.Result.Error
+	}
+
+	names := map[string]struct{}{}
+	totalIssues := 0
+
+	problemList := func() string {
+		if len(names) == 0 {
+			return ""
+		}
+		uniqueNames := []string{}
+		for n := range names {
+			uniqueNames = append(uniqueNames, n)
+		}
+		return fmt.Sprintf(" (%s)", strings.Join(uniqueNames, ", "))
+	}
+
+	for _, p := range t.Result.Problems {
+		if p.Severity == letsdebug.SeverityDebug {
+			continue
+		}
+		names[p.Name] = struct{}{}
+		totalIssues++
+	}
+
+	return fmt.Sprintf("%d unique issue(s) detected%s", totalIssues, problemList())
 }
 
 type options struct {

@@ -1,5 +1,10 @@
 {{ define "head" }}
 <meta name="robots" content="noindex" />
+<meta property="og:site_name" content="Let's Debug" />
+<meta property="og:title" content="Test result for {{ .Test.Domain }}: {{ .Test.Severity }}" />
+<meta property="og:description" content="{{ .Test.LongSummary }}" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://letsdebug.net/{{ .Test.Domain }}/{{ .Test.ID}}" />
 <style>
 .problem {
   padding: 1rem;
