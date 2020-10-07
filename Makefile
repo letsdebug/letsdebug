@@ -4,8 +4,7 @@ clean:
 	rm -f letsdebug-server
 
 deps:
-	go get -u github.com/jteeuwen/go-bindata/...
-	dep ensure
+	go get -u github.com/go-bindata/go-bindata/...
 
 generate:
 	go generate ./...

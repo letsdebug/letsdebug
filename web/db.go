@@ -17,7 +17,7 @@ import (
 
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
-	"github.com/golang-migrate/migrate/source/go-bindata"
+	"github.com/golang-migrate/migrate/source/go_bindata"
 	"github.com/letsdebug/letsdebug"
 )
 
