@@ -192,7 +192,7 @@ func doQuery(ctx context.Context, name string, rrType uint16, port int, w io.Wri
 				readyChan <- true
 			}
 		}
-		debug("[unbound-%d] %d lines of logs", port, i)
+		debug("[unbound-%d] %d lines of logs\n", port, i)
 	}()
 
 	// wait for unbound
