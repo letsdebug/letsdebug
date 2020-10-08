@@ -35,6 +35,7 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 
 	var probs []Problem
 	var aRRs, aaaaRRs []dns.RR
+	var aLogs, aaaLogs string
 	var aErr, aaaaErr error
 
 	var wg sync.WaitGroup
@@ -42,12 +43,12 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 
 	go func() {
 		defer wg.Done()
-		aaaaRRs, aaaaErr = ctx.Lookup(domain, dns.TypeAAAA)
+		aaaaRRs, aaaLogs, aaaaErr = ctx.Lookup(domain, dns.TypeAAAA)
 	}()
 
 	go func() {
 		defer wg.Done()
-		aRRs, aErr = ctx.Lookup(domain, dns.TypeA)
+		aRRs, aLogs, aErr = ctx.Lookup(domain, dns.TypeA)
 	}()
 
 	wg.Wait()
@@ -57,6 +58,13 @@ func (c dnsAChecker) Check(ctx *scanContext, domain string, method ValidationMet
 	}
 	if aaaaErr != nil {
 		probs = append(probs, dnsLookupFailed(domain, "AAAA", aaaaErr))
+	}
+
+	if aLogs != "" {
+		probs = append(probs, unboundLogs("A record unbound logs for: "+domain, aLogs))
+	}
+	if aaaLogs != "" {
+		probs = append(probs, unboundLogs("AAAA record unbound logs for: "+domain, aaaLogs))
 	}
 
 	for _, rr := range aRRs {
@@ -101,7 +109,7 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 
 	var ips []net.IP
 
-	rrs, _ := ctx.Lookup(domain, dns.TypeAAAA)
+	rrs, _, _ := ctx.Lookup(domain, dns.TypeAAAA)
 	for _, rr := range rrs {
 		aaaa, ok := rr.(*dns.AAAA)
 		if !ok {
@@ -109,7 +117,7 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		}
 		ips = append(ips, aaaa.AAAA)
 	}
-	rrs, _ = ctx.Lookup(domain, dns.TypeA)
+	rrs, _, _ = ctx.Lookup(domain, dns.TypeA)
 	for _, rr := range rrs {
 		a, ok := rr.(*dns.A)
 		if !ok {

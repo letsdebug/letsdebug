@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -33,7 +34,7 @@ const (
     log-queries: yes
     num-threads: 1
     so-reuseport: yes
-    verbosity: 2
+    verbosity: 9
     use-syslog: no
     log-time-ascii: yes
     do-ip4: yes
@@ -131,20 +132,8 @@ func fileExists(filename string) bool {
 	return true
 }
 
-func lookup(name string, rrType uint16) ([]dns.RR, error) {
-	if !strings.HasSuffix(name, ".") {
-		name += "."
-	}
-
+func lookup(name string, rrType uint16) ([]dns.RR, string, error) {
 	port := <-portChan
-	unboundConfFile := filepath.Join(configPath, fmt.Sprintf("unbound%d.conf", port))
-
-	path := os.Getenv("LETSDEBUG_UNBOUND_PATH")
-	if path == "" {
-		path = "unbound"
-	} else {
-		path = filepath.Join(path, "unbound")
-	}
 
 	// TODO: pass through a parent context for this?
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -152,8 +141,32 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 		cancel()
 	}()
 
+	var b strings.Builder
+	rr, err := doQuery(ctx, name, rrType, port, &b)
+	if err != nil {
+		return nil, b.String(), err
+	}
+	return rr, b.String(), err
+}
+
+func doQuery(ctx context.Context, name string, rrType uint16, port int, w io.Writer) ([]dns.RR, error) {
+	if !strings.HasSuffix(name, ".") {
+		name += "."
+	}
+
+	unboundConfFile := filepath.Join(configPath, fmt.Sprintf("unbound%d.conf", port))
+	path := os.Getenv("LETSDEBUG_UNBOUND_PATH")
+	if path == "" {
+		path = "unbound"
+	} else {
+		path = filepath.Join(path, "unbound")
+	}
+
 	cmd := exec.CommandContext(ctx, path, "-p", "-d", "-c", unboundConfFile)
-	errPipe, _ := cmd.StderrPipe()
+	errPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("unable to setup stderrpipe for unbound: %v", err)
+	}
 
 	// start the unbound process
 	debug("[unbound-%d] Starting unbound: %s\n", port, strings.Join(cmd.Args, " "))
@@ -162,7 +175,7 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 	}
 	defer func() {
 		debug("[unbound-%d] unbound closing\n", port)
-		cmd.Process.Kill()
+		cmd.Process.Signal(os.Interrupt)
 		cmd.Wait()
 		debug("[unbound-%d] unbound closed\n", port)
 	}()
@@ -171,12 +184,15 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 	readyChan := make(chan bool)
 	go func() {
 		scanner := bufio.NewScanner(errPipe)
+		i := 0
 		for scanner.Scan() {
+			i++
+			fmt.Fprintln(w, scanner.Text())
 			if strings.Contains(scanner.Text(), "start of service") {
 				readyChan <- true
 			}
-			debug("[unbound-%d] output: %s\n", port, scanner.Text())
 		}
+		debug("[unbound-%d] %d lines of logs", port, i)
 	}()
 
 	// wait for unbound

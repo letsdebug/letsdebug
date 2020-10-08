@@ -73,3 +73,12 @@ func debugProblem(name, message, detail string) Problem {
 		Severity:    SeverityDebug,
 	}
 }
+
+func unboundLogs(message, detail string) Problem {
+	return Problem{
+		Name:        "UnboundLogs",
+		Explanation: message,
+		Detail:      detail,
+		Severity:    SeverityDebug,
+	}
+}

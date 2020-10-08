@@ -47,7 +47,7 @@ func (c txtRecordChecker) Check(ctx *scanContext, domain string, method Validati
 		domain = domain[2:]
 	}
 
-	if _, err := ctx.Lookup("_acme-challenge."+domain, dns.TypeTXT); err != nil {
+	if _, _, err := ctx.Lookup("_acme-challenge."+domain, dns.TypeTXT); err != nil {
 		// report this problem as a fatal problem as that is the purpose of this checker
 		return []Problem{txtRecordError(domain, err)}, nil
 	}
@@ -93,7 +93,7 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 	doQuery := func(q string) ([]string, string) {
 		found := []string{}
 		combined := []string{}
-		rrs, _ := ctx.Lookup(q, dns.TypeTXT)
+		rrs, _, _ := ctx.Lookup(q, dns.TypeTXT)
 		for _, rr := range rrs {
 			txt, ok := rr.(*dns.TXT)
 			if !ok {
