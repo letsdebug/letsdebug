@@ -15,8 +15,8 @@ test:
 server-dev: generate
 	LETSDEBUG_WEB_DEBUG=1 \
 	LETSDEBUG_WEB_DB_DSN="user=letsdebug dbname=letsdebug password=password sslmode=disable" \
-	LETSDEBUG_DEBUG=1 go \
-	run -race cmd/server/server.go
+	LETSDEBUG_DEBUG=1 \
+	go run -race cmd/server/server.go
 
 server-dev-db-up:
 	docker run -d --name letsdebug-db -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_USER=letsdebug postgres:10.3-alpine

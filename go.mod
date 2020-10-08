@@ -16,7 +16,6 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/lib/pq v1.8.0
 	github.com/miekg/dns v1.1.31
-	github.com/miekg/unbound v0.0.0-20180419064740-e2b53b2dbcba
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
