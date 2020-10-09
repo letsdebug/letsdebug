@@ -10,9 +10,10 @@ import (
 )
 
 type lookupResult struct {
-	RRs   []dns.RR
-	Logs  string
-	Error error
+	RRs          []dns.RR
+	Hash         string
+	LogsFilePath string
+	Error        error
 }
 
 type scanContext struct {
@@ -30,7 +31,7 @@ func newScanContext() *scanContext {
 	}
 }
 
-func (sc *scanContext) Lookup(name string, rrType uint16) ([]dns.RR, string, error) {
+func (sc *scanContext) Lookup(name string, rrType uint16, writeLogs bool) ([]dns.RR, string, string, error) {
 	sc.rrsMutex.Lock()
 	rrMap, ok := sc.rrs[name]
 	if !ok {
@@ -41,25 +42,26 @@ func (sc *scanContext) Lookup(name string, rrType uint16) ([]dns.RR, string, err
 	sc.rrsMutex.Unlock()
 
 	if ok {
-		return result.RRs, result.Logs, result.Error
+		return result.RRs, result.Hash, result.LogsFilePath, result.Error
 	}
 
-	resolved, logs, err := lookup(name, rrType)
+	resolved, hash, logFilePath, err := lookup(name, rrType, writeLogs)
 
 	sc.rrsMutex.Lock()
 	rrMap[rrType] = lookupResult{
-		RRs:   resolved,
-		Logs:  logs,
-		Error: err,
+		RRs:          resolved,
+		Hash:         hash,
+		LogsFilePath: logFilePath,
+		Error:        err,
 	}
 	sc.rrsMutex.Unlock()
 
-	return resolved, logs, err
+	return resolved, hash, logFilePath, err
 }
 
 // Only slightly random - it will use AAAA over A if possible.
 func (sc *scanContext) LookupRandomHTTPRecord(name string) (net.IP, error) {
-	v6RRs, _, err := sc.Lookup(name, dns.TypeAAAA)
+	v6RRs, _, _, err := sc.Lookup(name, dns.TypeAAAA, false)
 	if err != nil {
 		return net.IP{}, err
 	}
@@ -69,7 +71,7 @@ func (sc *scanContext) LookupRandomHTTPRecord(name string) (net.IP, error) {
 		}
 	}
 
-	v4RRs, _, err := sc.Lookup(name, dns.TypeA)
+	v4RRs, _, _, err := sc.Lookup(name, dns.TypeA, false)
 	if err != nil {
 		return net.IP{}, err
 	}

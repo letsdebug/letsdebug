@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -106,6 +107,8 @@ func Serve() error {
 	r.Post("/", s.httpSubmitTest)
 	// - View test results (or test loading page)
 	r.Get("/{domain}/{testID}", s.httpViewTestResult)
+	// - View unbound logs for a test
+	r.Get("/{domain}/{testID}/unboundlogs", s.httpViewUnboundLog)
 	// - View all tests for domain
 	r.Get("/{domain}", s.httpViewDomain)
 	// Certwatch query gateway
@@ -223,6 +226,59 @@ func (s *server) httpViewDomain(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(tests); err != nil {
 		log.Printf("failed to marshal test list: %v", err)
 	}
+}
+
+func (s *server) httpViewUnboundLog(w http.ResponseWriter, r *http.Request) {
+	domain := chi.URLParam(r, "domain")
+	testID, err := strconv.Atoi(chi.URLParam(r, "testID"))
+
+	isBrowser := r.Header.Get("accept") != "application/json"
+
+	doError := func(msg string, code int) {
+		if !isBrowser {
+			http.Error(w, msg, code)
+			return
+		}
+		s.render(w, code, "results.tpl", map[string]interface{}{
+			"Error": msg,
+		})
+	}
+
+	if domain == "" || err != nil {
+		doError("Invalid request parameters.", http.StatusBadRequest)
+		return
+	}
+
+	test, err := s.findTest(domain, testID)
+	if err != nil {
+		log.Printf("fetching %s/%d: %v", domain, testID, err)
+		doError("An internal error occurred fetching that test.", http.StatusInternalServerError)
+		return
+	}
+
+	if test == nil {
+		doError("No such result exists.", http.StatusNotFound)
+		return
+	}
+
+	for _, prob := range test.Result.Problems {
+		if prob.Name == "UnboundLogs" {
+			lines := prob.DetailLines()
+			if len(lines) != 2 {
+				break
+			}
+			logFile := lines[1]
+			b, err := ioutil.ReadFile(logFile)
+			if err != nil {
+				break
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write(b)
+			return
+		}
+	}
+
+	doError("No unbound logs for this test.", http.StatusNotFound)
 }
 
 func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {

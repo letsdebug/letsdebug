@@ -114,7 +114,7 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 		domain = domain[2:]
 	}
 
-	rrs, _, err := ctx.Lookup(domain, dns.TypeCAA)
+	rrs, _, _, err := ctx.Lookup(domain, dns.TypeCAA, false)
 	if err != nil {
 		probs = append(probs, dnsLookupFailed(domain, "CAA", err))
 		return probs, nil

@@ -132,6 +132,7 @@
   </section>
   {{ else }}
   <section class="results">
+    {{ $test := .Test }}
     {{ range $index, $problem := .Test.Result.Problems }}
     <div class="problem problem-{{ $problem.Severity }}" id="{{ $problem.Name }}-{{ $problem.Severity }}">
       <div class="problem-header">
@@ -140,7 +141,11 @@
       </div>
       <div class="problem-description">{{ $problem.Explanation }} </div>
       <div class="problem-detail">
+        {{ if eq $problem.Name "UnboundLogs" }}
+        <a href="/{{ $test.Domain }}/{{ $test.ID }}/unboundlogs">Click here to view unbound logs.</a><p />Note: These logs are only available for 7 days after a test is submitted.
+        {{ else }}
         {{ range $dIndex, $detail := $problem.DetailLines }}{{ $detail }} <br/>{{ end }}
+        {{ end }}
       </div>
     </div>
     {{ end }}

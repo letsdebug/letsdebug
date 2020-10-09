@@ -2,7 +2,9 @@ package letsdebug
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -73,6 +75,7 @@ const (
 var (
 	portChan   chan int
 	configPath string
+	logsPath   string
 )
 
 func init() {
@@ -98,8 +101,10 @@ func init() {
 	}
 
 	configPath = filepath.Join(configPath, "letsdebug")
+	logsPath = filepath.Join(configPath, "logs")
 
 	_ = os.Mkdir(configPath, 0755)
+	_ = os.Mkdir(logsPath, 0755)
 
 	rootKeyFile := filepath.Join(configPath, "root.key")
 	if !fileExists(rootKeyFile) {
@@ -122,6 +127,34 @@ func init() {
 			}
 		}
 	}
+
+	go deleteOldLogs()
+}
+
+func deleteOldLogs() {
+	for {
+		oldTime := time.Now().AddDate(0, 0, -7)
+
+		matches, _ := filepath.Glob(filepath.Join(logsPath, "*.txt"))
+		for _, match := range matches {
+			stat, err := os.Stat(match)
+			if err != nil {
+				continue
+			}
+			// only easy cross platform time, should be good enough
+			if stat.ModTime().Before(oldTime) {
+				err := os.Remove(match)
+				if err != nil {
+					debug("[unbound] error removing old log file: %s\n", match)
+				} else {
+					debug("[unbound] removed old log file: %s\n", match)
+				}
+			}
+		}
+
+		// run once a day
+		<-time.After(24 * time.Hour)
+	}
 }
 
 func fileExists(filename string) bool {
@@ -132,21 +165,36 @@ func fileExists(filename string) bool {
 	return true
 }
 
-func lookup(name string, rrType uint16) ([]dns.RR, string, error) {
+func lookup(name string, rrType uint16, writeLogs bool) (rr []dns.RR, hash string, logFilePath string, err error) {
 	port := <-portChan
 
 	// TODO: pass through a parent context for this?
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
 
-	var b strings.Builder
-	rr, err := doQuery(ctx, name, rrType, port, &b)
-	if err != nil {
-		return nil, b.String(), err
+	if !writeLogs {
+		rr, err = doQuery(ctx, name, rrType, port, ioutil.Discard)
+	} else {
+		var b bytes.Buffer
+		rr, err = doQuery(ctx, name, rrType, port, &b)
+
+		sum := sha256.Sum256(b.Bytes())
+		hash = fmt.Sprintf("%x", sum)
+
+		logFilePath = filepath.Join(logsPath, hash+".txt")
+		errLogs := ioutil.WriteFile(logFilePath, b.Bytes(), 0644)
+		if errLogs != nil {
+			// TODO: pass through this error to front end?
+			debug("[unbound-%d] error writing logs file %q: %s\n", port, logFilePath, errLogs)
+			hash = ""
+			logFilePath = ""
+		}
 	}
-	return rr, b.String(), err
+
+	if err != nil {
+		return nil, hash, logFilePath, err
+	}
+	return rr, hash, logFilePath, err
 }
 
 func doQuery(ctx context.Context, name string, rrType uint16, port int, w io.Writer) ([]dns.RR, error) {
