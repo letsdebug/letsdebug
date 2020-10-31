@@ -17,7 +17,7 @@ import (
 
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
-	"github.com/golang-migrate/migrate/source/go_bindata"
+	bindata "github.com/golang-migrate/migrate/source/go_bindata"
 	"github.com/letsdebug/letsdebug"
 )
 
@@ -67,7 +67,7 @@ type resultView struct {
 func (rv *resultView) Scan(src interface{}) error {
 	buf, ok := src.([]byte)
 	if !ok {
-		return errors.New("Bad type")
+		return errors.New("bad type")
 	}
 	if err := json.Unmarshal(buf, &rv); err != nil {
 		return err
@@ -104,7 +104,7 @@ func (t testView) TestDuration() string {
 }
 
 func (t testView) SubmitTime() string {
-	timeAgo := time.Now().Sub(t.CreatedAt)
+	timeAgo := time.Since(t.CreatedAt)
 	if timeAgo.Hours() <= 72 {
 		return timeAgo.Truncate(time.Second).String() + " ago"
 	}
@@ -119,7 +119,7 @@ func (t testView) IsRunningLong() bool {
 	if t.StartedAt == nil {
 		return false
 	}
-	return time.Now().Sub(*t.StartedAt) > time.Minute
+	return time.Since(*t.StartedAt) > time.Minute
 }
 
 func (t testView) Severity() string {
@@ -304,7 +304,7 @@ func (s *server) listenForTests(dsn string) error {
 
 			s.workCh <- notification
 		case <-time.After(time.Minute):
-			go listener.Ping()
+			go listener.Ping() //nolint:errcheck
 		}
 	}
 }

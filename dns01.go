@@ -11,10 +11,10 @@ import (
 	"github.com/weppos/publicsuffix-go/publicsuffix"
 )
 
-// wildcardDns01OnlyChecker ensures that a wildcard domain is only validated via dns-01.
-type wildcardDns01OnlyChecker struct{}
+// wildcardDNS01OnlyChecker ensures that a wildcard domain is only validated via dns-01.
+type wildcardDNS01OnlyChecker struct{}
 
-func (c wildcardDns01OnlyChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+func (c wildcardDNS01OnlyChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	if !strings.HasPrefix(domain, "*.") {
 		return nil, errNotApplicable
 	}
@@ -23,10 +23,10 @@ func (c wildcardDns01OnlyChecker) Check(ctx *scanContext, domain string, method 
 		return nil, errNotApplicable
 	}
 
-	return []Problem{wildcardHttp01(domain, method)}, nil
+	return []Problem{wildcardHTTP01(domain, method)}, nil
 }
 
-func wildcardHttp01(domain string, method ValidationMethod) Problem {
+func wildcardHTTP01(domain string, method ValidationMethod) Problem {
 	return Problem{
 		Name:        "MethodNotSuitable",
 		Explanation: fmt.Sprintf("A wildcard domain like %s can only be issued using a dns-01 validation method.", domain),
@@ -43,9 +43,7 @@ func (c txtRecordChecker) Check(ctx *scanContext, domain string, method Validati
 		return nil, errNotApplicable
 	}
 
-	if strings.HasPrefix(domain, "*.") {
-		domain = domain[2:]
-	}
+	domain = strings.TrimPrefix(domain, "*.")
 
 	if _, err := ctx.Lookup("_acme-challenge."+domain, dns.TypeTXT); err != nil {
 		// report this problem as a fatal problem as that is the purpose of this checker
@@ -129,7 +127,7 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 		defer wg.Done()
 
 		nonce := make([]byte, 4)
-		rand.Read(nonce)
+		_, _ = rand.Read(nonce)
 		_, randomCombined = doQuery(fmt.Sprintf("_acme-challenge.%s.%s", fmt.Sprintf("rand-%x", nonce), domain))
 	}()
 
@@ -143,7 +141,7 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 	}
 
 	if len(found) > 0 {
-		return []Problem{Problem{
+		return []Problem{{
 			Name: "TXTDoubleLabel",
 			Explanation: "Some DNS records were found that indicate TXT records may have been incorrectly manually entered into " +
 				`DNS editor interfaces. The correct way to enter these records is to either remove the domain from the label (so ` +

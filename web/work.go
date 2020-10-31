@@ -27,7 +27,7 @@ func (s *server) work() {
 		atomic.AddInt32(&s.busyWorkers, 1)
 
 		// Ignore failure
-		s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, req.ID)
+		_, _ = s.db.Exec(`UPDATE tests SET started_at = CURRENT_TIMESTAMP, status = 'Processing' WHERE id = $1;`, req.ID)
 
 		res, err := letsdebug.CheckWithOptions(req.Domain, letsdebug.ValidationMethod(req.Method), letsdebug.Options{
 			HTTPExpectResponse: req.Options.HTTPExpectResponse,

@@ -34,7 +34,7 @@ func init() {
 		asyncCheckerBlock{
 			validMethodChecker{},
 			validDomainChecker{},
-			wildcardDns01OnlyChecker{},
+			wildcardDNS01OnlyChecker{},
 			statusioChecker{},
 			ofac,
 		},
@@ -84,7 +84,7 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 			debug("[%s] async: + %v\n", id, t)
 			start := time.Now()
 			probs, err := task.Check(ctx, domain, method)
-			debug("[%s] async: - %v in %v\n", id, t, time.Now().Sub(start))
+			debug("[%s] async: - %v in %v\n", id, t, time.Since(start))
 			resultCh <- asyncResult{probs, err}
 		}(task, ctx, domain, method)
 	}
@@ -92,15 +92,13 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 	var probs []Problem
 
 	for i := 0; i < len(c); i++ {
-		select {
-		case result := <-resultCh:
-			if result.Error != nil && result.Error != errNotApplicable {
-				debug("[%s] Exiting async via error\n", id)
-				return nil, result.Error
-			}
-			if len(result.Problems) > 0 {
-				probs = append(probs, result.Problems...)
-			}
+		result := <-resultCh
+		if result.Error != nil && result.Error != errNotApplicable {
+			debug("[%s] Exiting async via error\n", id)
+			return nil, result.Error
+		}
+		if len(result.Problems) > 0 {
+			probs = append(probs, result.Problems...)
 		}
 	}
 

@@ -21,8 +21,7 @@ func TestCheck(t *testing.T) {
 	checkers = []checker{
 		checkerFail{},
 	}
-	probs, err = Check("", "")
-	if err == nil {
+	if _, err := Check("", ""); err == nil {
 		t.Fatal("expected error, got none")
 	}
 
@@ -30,8 +29,7 @@ func TestCheck(t *testing.T) {
 	checkers = []checker{
 		checkerPanic{},
 	}
-	probs, err = Check("", "")
-	if err == nil {
+	if _, err := Check("", ""); err == nil {
 		t.Fatal("expected error, got none")
 	}
 }

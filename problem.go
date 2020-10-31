@@ -50,7 +50,7 @@ func hasFatalProblem(probs []Problem) bool {
 func internalProblem(message string, level SeverityLevel) Problem {
 	return Problem{
 		Name:        "InternalProblem",
-		Explanation: fmt.Sprintf("An internal error occurred while checking the domain"),
+		Explanation: "An internal error occurred while checking the domain",
 		Detail:      message,
 		Severity:    level,
 	}

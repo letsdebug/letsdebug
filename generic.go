@@ -61,15 +61,13 @@ type validDomainChecker struct{}
 func (c validDomainChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 
-	if strings.HasPrefix(domain, "*.") {
-		domain = domain[2:]
-	}
+	domain = strings.TrimPrefix(domain, "*.")
 
 	for _, ch := range []byte(domain) {
-		if (('a' <= ch && ch <= 'z') ||
+		if !(('a' <= ch && ch <= 'z') ||
 			('A' <= ch && ch <= 'A') ||
 			('0' <= ch && ch <= '9') ||
-			ch == '.' || ch == '-') == false {
+			ch == '.' || ch == '-') {
 			probs = append(probs, invalidDomain(domain, fmt.Sprintf("Invalid character present: %c", ch)))
 			return probs, nil
 		}
@@ -238,9 +236,7 @@ type cloudflareChecker struct{}
 func (c cloudflareChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
 	var probs []Problem
 
-	if strings.HasPrefix(domain, "*.") {
-		domain = domain[2:]
-	}
+	domain = strings.TrimPrefix(domain, "*.")
 
 	cl := http.Client{
 		Timeout: httpTimeout * time.Second,
@@ -455,9 +451,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 		return nil, errNotApplicable
 	}
 
-	if strings.HasPrefix(domain, "*.") {
-		domain = domain[2:]
-	}
+	domain = strings.TrimPrefix(domain, "*.")
 
 	db, err := sql.Open("postgres", "user=guest dbname=certwatch host=crt.sh sslmode=disable connect_timeout=5")
 	if err != nil {
@@ -514,7 +508,7 @@ func (c *rateLimitChecker) Check(ctx *scanContext, domain string, method Validat
 	certsTowardsRateLimit := certs.FindWithCommonRegisteredDomain(registeredDomain)
 	if len(certs) > 0 && len(certsTowardsRateLimit) >= 50 {
 		dropOff := certs.GetOldestCertificate().NotBefore.Add(7 * 24 * time.Hour)
-		dropOffDiff := dropOff.Sub(time.Now()).Truncate(time.Minute)
+		dropOffDiff := time.Until(dropOff).Truncate(time.Minute)
 
 		probs = append(probs, rateLimited(domain, fmt.Sprintf("The 'Certificates per Registered Domain' limit ("+
 			"50 certificates per week that share the same Registered Domain: %s) has been exceeded. "+
@@ -620,7 +614,7 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 	probs := []Problem{}
 
-	order, err := c.client.NewOrder(c.account, []acme.Identifier{acme.Identifier{Type: "dns", Value: domain}})
+	order, err := c.client.NewOrder(c.account, []acme.Identifier{{Type: "dns", Value: domain}})
 	if err != nil {
 		if p := translateAcmeError(domain, err); p.Name != "" {
 			probs = append(probs, p)

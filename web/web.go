@@ -1,3 +1,4 @@
+// Package web implements the web frontend of the Let's Debug service
 package web
 
 import (
@@ -119,7 +120,9 @@ func Serve() error {
 	s.rateLimitByIP = map[string]*ratelimit.Bucket{}
 
 	go func() {
-		http.ListenAndServe(envOrDefault("PPROF_LISTEN_ADDR", "127.0.0.1:9151"), nil)
+		if err := http.ListenAndServe(envOrDefault("PPROF_LISTEN_ADDR", "127.0.0.1:9151"), nil); err != nil {
+			log.Printf("pprof bind failed: %v", err)
+		}
 	}()
 
 	log.Printf("Starting web server ...")
@@ -178,7 +181,7 @@ func (s *server) httpCertwatchQuery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	enc.Encode(map[string]interface{}{
+	_ = enc.Encode(map[string]interface{}{
 		"query":   q,
 		"results": out,
 	})
@@ -448,9 +451,7 @@ func normalizeDomain(domain string) string {
 }
 
 func isValidDomain(domain string) bool {
-	if strings.HasPrefix(domain, "*.") {
-		domain = domain[2:]
-	}
+	domain = strings.TrimPrefix(domain, "*.")
 	return domain != "" && len(domain) <= 230 && regexDNSName.MatchString(domain)
 }
 
@@ -473,7 +474,7 @@ var favicon = []byte("GIF89a@\x00@\x00\xf3\x0e\x00+;h+;i,;h+<h+<i+=i,<h-<h,<i-<i
 
 func (s *server) httpServeFavicon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/gif")
-	w.Write(favicon)
+	_, _ = w.Write(favicon)
 }
 
 const robotsTxt = `User-Agent: *

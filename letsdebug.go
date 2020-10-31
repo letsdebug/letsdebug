@@ -55,7 +55,7 @@ func CheckWithOptions(domain string, method ValidationMethod, opts Options) (pro
 		debug("[*] + %v\n", t)
 		start := time.Now()
 		checkerProbs, err := checker.Check(ctx, domain, method)
-		debug("[*] - %v in %v\n", t, time.Now().Sub(start))
+		debug("[*] - %v in %v\n", t, time.Since(start))
 		if err == nil {
 			if len(checkerProbs) > 0 {
 				probs = append(probs, checkerProbs...)

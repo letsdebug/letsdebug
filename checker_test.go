@@ -21,7 +21,7 @@ func (c checkerSucceedEmpty) Check(ctx *scanContext, domain string, method Valid
 type checkerSucceedWithProblem struct{}
 
 func (c checkerSucceedWithProblem) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
-	return []Problem{Problem{Name: "Empty"}}, nil
+	return []Problem{{Name: "Empty"}}, nil
 }
 
 type checkerPanic struct{}
@@ -49,8 +49,7 @@ func TestAsyncCheckerBlock_Check(t *testing.T) {
 	a = asyncCheckerBlock{
 		checkerFail{},
 	}
-	probs, err = a.Check(nil, "", "")
-	if err == nil {
+	if _, err := a.Check(nil, "", ""); err == nil {
 		t.Fatal("expected error, got none")
 	}
 
@@ -58,8 +57,7 @@ func TestAsyncCheckerBlock_Check(t *testing.T) {
 	a = asyncCheckerBlock{
 		checkerPanic{},
 	}
-	probs, err = a.Check(nil, "", "")
-	if err == nil {
+	if _, err := a.Check(nil, "", ""); err == nil {
 		t.Fatal("expected error, got none")
 	}
 }
