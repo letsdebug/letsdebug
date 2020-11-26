@@ -13,6 +13,8 @@ github.com/docker/go-units v0.4.0 h1:3uh0PgVws3nIA0Q+MwDC8yjEPf9zjRfZZWXZYDct3Tw
 github.com/docker/go-units v0.4.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/eggsampler/acme v1.0.0 h1:sVHToytaPbCfxwbTzPcCGfe2ibs78Rh0Pt+cQzEXc0g=
 github.com/eggsampler/acme v1.0.0/go.mod h1:8WmHqL9DowF/uQ1AmTfPM7VeVGbhg/urRmS+vb2WlS4=
+github.com/eggsampler/acme/v3 v3.1.1 h1:hSze1Cw4bHtCUdiQE2R0GKfXjAuLirSFPUX1IBz9wKw=
+github.com/eggsampler/acme/v3 v3.1.1/go.mod h1:/qh0rKC/Dh7Jj+p4So7DbWmFNzC4dpcpK53r226Fhuo=
 github.com/go-bindata/go-bindata v1.0.0 h1:DZ34txDXWn1DyWa+vQf7V9ANc2ILTtrEjtlsdJRF26M=
 github.com/go-bindata/go-bindata v3.1.2+incompatible h1:5vjJMVhowQdPzjE1LdxyFF7YFTXg5IgGVW4gBr5IbvE=
 github.com/go-bindata/go-bindata v3.1.2+incompatible/go.mod h1:xK8Dsgwmeed+BBsSy2XTopBn/8uK2HWuGSnA11C3Joo=

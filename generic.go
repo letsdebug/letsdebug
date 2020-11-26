@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/eggsampler/acme"
+	"github.com/eggsampler/acme/v3"
 
 	"fmt"
 
@@ -566,6 +566,9 @@ func (c *acmeStagingChecker) buildAcmeClient() error {
 	if err != nil {
 		return err
 	}
+
+	// Give the ACME CA more time to complete challenges
+	cl.PollTimeout = 100 * time.Second
 
 	regrPath := os.Getenv("LETSDEBUG_ACMESTAGING_ACCOUNTFILE")
 	if regrPath == "" {
