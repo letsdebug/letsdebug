@@ -90,6 +90,20 @@ func (t checkHTTPTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	return resp, err
 }
 
+func makeSingleShotHTTPTransport() *http.Transport {
+	return &http.Transport{
+		// Boulder VA's HTTP transport settings
+		// https://github.com/letsencrypt/boulder/blob/387e94407c58fe0ff65207a89304776ee7417410/va/http.go#L143-L160
+		DisableKeepAlives:   true,
+		IdleConnTimeout:     time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		MaxIdleConns:        1,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+}
+
 func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckResult, Problem) {
 	dialer := net.Dialer{
 		Timeout: httpTimeout * time.Second,
@@ -102,40 +116,39 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 
 	var redirErr redirectError
 
+	baseHTTPTransport := makeSingleShotHTTPTransport()
+	baseHTTPTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, _ := net.SplitHostPort(addr)
+		host = normalizeFqdn(host)
+
+		dialFunc := func(ip net.IP, port string) (net.Conn, error) {
+			checkRes.Trace(fmt.Sprintf("Dialing %s", ip.String()))
+			if ip.To4() == nil {
+				return dialer.DialContext(ctx, "tcp", "["+ip.String()+"]:"+port)
+			}
+			return dialer.DialContext(ctx, "tcp", ip.String()+":"+port)
+		}
+
+		// Only override the address for this specific domain.
+		// We don't want to mangle redirects.
+		if host == domain {
+			return dialFunc(address, port)
+		}
+
+		// For other hosts, we need to use Unbound to resolve the name
+		otherAddr, err := scanCtx.LookupRandomHTTPRecord(host)
+		if err != nil {
+			return nil, err
+		}
+
+		return dialFunc(otherAddr, port)
+	}
+
 	cl := http.Client{
 		Transport: checkHTTPTransport{
-			result: checkRes,
-			transport: &http.Transport{
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					host, port, _ := net.SplitHostPort(addr)
-					host = normalizeFqdn(host)
-
-					dialFunc := func(ip net.IP, port string) (net.Conn, error) {
-						checkRes.Trace(fmt.Sprintf("Dialing %s", ip.String()))
-						if ip.To4() == nil {
-							return dialer.DialContext(ctx, "tcp", "["+ip.String()+"]:"+port)
-						}
-						return dialer.DialContext(ctx, "tcp", ip.String()+":"+port)
-					}
-
-					// Only override the address for this specific domain.
-					// We don't want to mangle redirects.
-					if host == domain {
-						return dialFunc(address, port)
-					}
-
-					// For other hosts, we need to use Unbound to resolve the name
-					otherAddr, err := scanCtx.LookupRandomHTTPRecord(host)
-					if err != nil {
-						return nil, err
-					}
-
-					return dialFunc(otherAddr, port)
-				},
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			}},
+			result:    checkRes,
+			transport: baseHTTPTransport,
+		},
 		// boulder: va.go fetchHTTP
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			checkRes.NumRedirects++

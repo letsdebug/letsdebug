@@ -239,7 +239,8 @@ func (c cloudflareChecker) Check(ctx *scanContext, domain string, method Validat
 	domain = strings.TrimPrefix(domain, "*.")
 
 	cl := http.Client{
-		Timeout: httpTimeout * time.Second,
+		Timeout:   httpTimeout * time.Second,
+		Transport: makeSingleShotHTTPTransport(),
 	}
 	resp, err := cl.Get("https://" + domain)
 	if err == nil { // no tls error, cert must be issued
