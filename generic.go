@@ -433,7 +433,7 @@ WITH ci AS
       WHERE plainto_tsquery('%s') @@ identities(cai.CERTIFICATE)
         AND cai.NAME_VALUE ILIKE ('%%%s%%')
         AND x509_notBefore(cai.CERTIFICATE) >= '%s'
-        AND cai.issuer_ca_id = 16418
+        AND cai.issuer_ca_id IN (16418, 183267, 183283)
       LIMIT 1000) sub
    GROUP BY sub.CERTIFICATE)
 SELECT ci.DER der
