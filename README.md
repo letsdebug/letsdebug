@@ -42,16 +42,16 @@ There is a JSON-based API available as part of the web frontend.
 ### Submitting a test
 
 ```bash
-$ curl --data '{"method":"http-01","domain":"letsdebug.net"}' -H 'content-type: application/json' https://letsdebug.net
+$ curl --data '{"method":"http-01","domain":"example.com"}' -H 'content-type: application/json' https://letsdebug.net
 ```
 ```javascript
-{"Domain":"letsdebug.net","ID":14}
+{"Domain":"example.com","ID":674477}
 ```
 
 ### Submitting a test with custom options
 
 ```bash
-curl --data '{"method":"http-01","domain":"letsdebug.net","options":{"http_request_path":"custom-path","http_expect_response":"abc123"}}' -H 'content-type: application/json' https://letsdebug.net
+curl --data '{"method":"http-01","domain":"example.com","options":{"http_request_path":"custom-path","http_expect_response":"abc123"}}' -H 'content-type: application/json' https://letsdebug.net
 ```
 
 Available options are as follows:
@@ -64,16 +64,16 @@ Available options are as follows:
 ### Viewing tests
 
 ```bash
-$ curl -H 'accept: application/json' https://letsdebug.net/letsdebug.net/14
+$ curl -H 'accept: application/json' https://letsdebug.net/example.com/674477
 ```
 ```javascript
-{"id":14,"domain":"letsdebug.net","method":"http-01","status":"Complete","created_at":"2018-04-30T01:58:34.765829Z","started_at":"2018-04-30T01:58:34.769815Z","completed_at":"2018-04-30T01:58:41.39023Z","result":{}}
+{"id":674477,"domain":"example.com","method":"http-01","status":"Complete","created_at":"2021-09-08T04:02:26.416259Z","started_at":"2021-09-08T04:02:26.419336Z","completed_at":"2021-09-08T04:02:30.529766Z","result":{}}
 ```
 
 or to view all recent tests
 
 ```bash
-$ curl -H 'accept: application/json' https://letsdebug.net/letsdebug.net
+$ curl -H 'accept: application/json' https://letsdebug.net/example.com
 ```
 
 ### Performing a query against the Certwatch database
