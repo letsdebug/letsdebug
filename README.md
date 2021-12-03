@@ -133,8 +133,6 @@ This package relies on a fairly recent version of libunbound.
 
   `brew install unbound`
 
-You will also need Go's [dep](https://github.com/golang/dep) dependency manager.
-
 ### Releases
 You can save time by [downloading tagged releases for 64-bit Linux](https://github.com/letsdebug/letsdebug/releases). Keep in mind you will still need to have libunbound present on your system.
 
