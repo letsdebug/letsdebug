@@ -3,21 +3,20 @@ package web
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/lib/pq"
 
-	"encoding/json"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 
-	"errors"
-
-	"github.com/golang-migrate/migrate"
-	"github.com/golang-migrate/migrate/database/postgres"
-	bindata "github.com/golang-migrate/migrate/source/go_bindata"
 	"github.com/letsdebug/letsdebug"
 )
 
@@ -228,22 +227,17 @@ func (o *options) Scan(src interface{}) error {
 }
 
 func (s *server) migrateUp() error {
-	names, _ := AssetDir("db_migrations")
-	res := bindata.Resource(names, func(name string) ([]byte, error) {
-		return Asset("db_migrations/" + name)
-	})
+	embedDriver, err := iofs.New(embedMigrations, "db_migrations")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	src, err := bindata.WithInstance(res)
+	pgDriver, err := postgres.WithInstance(s.db.DB, &postgres.Config{})
 	if err != nil {
 		return err
 	}
 
-	driver, err := postgres.WithInstance(s.db.DB, &postgres.Config{})
-	if err != nil {
-		return err
-	}
-
-	m, err := migrate.NewWithInstance("go-bindata", src, s.db.DriverName(), driver)
+	m, err := migrate.NewWithInstance("iofs", embedDriver, s.db.DriverName(), pgDriver)
 	if err != nil {
 		return err
 	}

@@ -1,9 +1,8 @@
 package letsdebug
 
 import (
-	"testing"
-
 	"errors"
+	"testing"
 )
 
 type checkerFail struct{}

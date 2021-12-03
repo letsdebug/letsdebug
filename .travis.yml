@@ -1,13 +1,11 @@
 language: go
 go:
-  - '1.16.x'
+  - '1.17.x'
 before_install:
   - sudo apt-get update
   - sudo apt-get -y install libunbound-dev make
   - sudo mkdir -p $GOPATH/bin
   - export PATH=$PATH:$GOPATH/bin
-install:
-  - make deps
 script:
   - make letsdebug-server letsdebug-cli
 deploy:

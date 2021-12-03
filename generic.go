@@ -4,25 +4,21 @@ import (
 	"context"
 	"crypto/x509"
 	"database/sql"
+	"encoding/json"
 	"encoding/pem"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/eggsampler/acme/v3"
-
-	"fmt"
-
-	"net/http"
-	"net/url"
-
 	"time"
 
-	"encoding/json"
+	"github.com/eggsampler/acme/v3"
 
 	// Driver for crtwatch/ratelimitChecker
 	_ "github.com/lib/pq"

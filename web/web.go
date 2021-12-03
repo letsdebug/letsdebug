@@ -9,23 +9,24 @@ import (
 	"log"
 	"net"
 	"net/http"
+	// Export pprof on :9151 to investigate some memory leaks
+	_ "net/http/pprof"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	"github.com/juju/ratelimit"
-	"github.com/letsdebug/letsdebug"
 	"golang.org/x/net/idna"
 
-	// Export pprof on :9151 to investigate some memory leaks
-	_ "net/http/pprof"
+	"github.com/letsdebug/letsdebug"
 )
 
 var (
@@ -84,20 +85,25 @@ func Serve() error {
 	// Load templates
 	log.Printf("Loading templates ...")
 	s.templates = map[string]*template.Template{}
-	names, _ := AssetDir("templates/layouts")
-	includes, _ := AssetDir("templates/includes")
 
-	for _, tplName := range names {
-		tpl := template.New(tplName)
-		for _, incName := range includes {
-			if _, err := tpl.Parse(string(MustAsset("templates/includes/" + incName))); err != nil {
+	layoutPath := filepath.Join("templates", "layouts")
+	layoutEntries, _ := embedLayouts.ReadDir(layoutPath)
+	includesPath := filepath.Join("templates", "includes")
+	includeEntries, _ := embedIncludes.ReadDir(includesPath)
+
+	for _, tplName := range layoutEntries {
+		tpl := template.New(tplName.Name())
+		for _, incName := range includeEntries {
+			incContents, _ := embedIncludes.ReadFile(filepath.Join(includesPath, incName.Name()))
+			if _, err := tpl.Parse(string(incContents)); err != nil {
 				return err
 			}
 		}
-		if _, err := tpl.Parse(string(MustAsset("templates/layouts/" + tplName))); err != nil {
+		layoutContents, _ := embedLayouts.ReadFile(filepath.Join(layoutPath, tplName.Name()))
+		if _, err := tpl.Parse(string(layoutContents)); err != nil {
 			return err
 		}
-		s.templates[tplName] = tpl
+		s.templates[tplName.Name()] = tpl
 	}
 
 	// Routes
