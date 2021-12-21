@@ -45,6 +45,8 @@ func init() {
 			dnsAChecker{},            // depends on valid*Checker
 			txtRecordChecker{},       // depends on valid*Checker
 			txtDoubledLabelChecker{}, // depends on valid*Checker
+
+			nameServerOutOfSyncChecker{}, // no real dependency, just potentially slow
 		},
 
 		asyncCheckerBlock{

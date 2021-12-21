@@ -3,9 +3,11 @@ package letsdebug
 import (
 	"crypto/rand"
 	"fmt"
+	"net"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/weppos/publicsuffix-go/publicsuffix"
@@ -153,4 +155,293 @@ func (c txtDoubledLabelChecker) Check(ctx *scanContext, domain string, method Va
 	}
 
 	return nil, nil
+}
+
+// nameServerOutOfSyncChecker checks the nameservers for the domain to check if any existing TXT records mismatch
+// The general flow of this function is as follows,
+// 1. Lookup the nameservers for the given domain
+// 2. Lookup all the ips for those name servers
+// 3. Query each of those nameservers' ips for the _acme-challenge subdomain txt record
+// 4. Check all the txt records to see if they match
+type nameServerOutOfSyncChecker struct{}
+
+func (c nameServerOutOfSyncChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	// txt entries only really matter for dns methods
+	if method != DNS01 {
+		return nil, errNotApplicable
+	}
+
+	// lookup name servers for domain
+	nameSeverRRs, err := ctx.Lookup(domain, dns.TypeNS)
+	if err != nil {
+		return []Problem{dnsLookupFailed(domain, dns.TypeToString[dns.TypeNS], err)}, nil
+	}
+
+	// if no nameservers are returned, show a debug error
+	// this is most likely a temporary issue, so don't show a warning/error
+	if len(nameSeverRRs) <= 0 {
+		return []Problem{
+			debugProblem("NSOutOfSync",
+				"No nameservers found",
+				"No name server records were returned for the domain: "+domain),
+		}, nil
+	}
+
+	// then grab all the ip addresses (both 4 and 6) for the name servers
+	type nameServerIP struct {
+		Hostname string
+		IPs      []string
+		Error    error
+	}
+	chanNSIP := make(chan nameServerIP)
+	var wg sync.WaitGroup
+	rrTypes := []uint16{dns.TypeA, dns.TypeAAAA}
+	count := len(rrTypes) + len(nameSeverRRs)
+	wg.Add(count)
+	go func() {
+		wg.Wait()
+		close(chanNSIP)
+	}()
+
+	// async func to lookup given rr type on nameserver rr
+	lookupNameServerAsync := func(rr dns.RR, rrType uint16) {
+		defer wg.Done()
+
+		ns := nameServerIP{}
+
+		rrNS, ok := rr.(*dns.NS)
+		if !ok {
+			ns.Error = fmt.Errorf("Resource record returned is not a nameserver, got: %v", rr.String())
+			chanNSIP <- ns
+			return
+		}
+
+		ns.Hostname = rrNS.Ns
+
+		rrs, err := ctx.Lookup(rrNS.Ns, rrType)
+		if err != nil {
+			ns.Error = fmt.Errorf("Error looking up %s %s: %v", rrNS.Ns, dns.TypeToString[dns.TypeTXT], err)
+			chanNSIP <- ns
+			return
+		}
+
+		for _, rr := range rrs {
+			switch rrr := rr.(type) {
+			case *dns.A:
+				ns.IPs = append(ns.IPs, rrr.A.String())
+			case *dns.AAAA:
+				ns.IPs = append(ns.IPs, rrr.AAAA.String())
+			default:
+				ns.Error = fmt.Errorf("Unknown type returned from NS lookup %s %s: %s", rrNS.Ns, dns.TypeToString[rrType], dns.TypeToString[rr.Header().Rrtype])
+				chanNSIP <- ns
+				return
+			}
+		}
+		chanNSIP <- ns
+	}
+
+	for _, rrType := range rrTypes {
+		for _, rr := range nameSeverRRs {
+			go lookupNameServerAsync(rr, rrType)
+		}
+	}
+
+	type nameServer struct {
+		// name server hostname
+		Hostname string
+		// name server ips
+		IPs []string
+		// mapping of ip to records for domain
+		Records map[string][]string
+	}
+	// mapping of name server hostname to struct containing ips etc
+	nameServers := map[string]*nameServer{}
+	for nsIP := range chanNSIP {
+		if nsIP.Error != nil {
+			return []Problem{
+				debugProblem("NSOutOfSync", "Error querying name server record", nsIP.Error.Error()),
+			}, nil
+		}
+		ns := nameServers[nsIP.Hostname]
+		if ns == nil {
+			ns = &nameServer{Hostname: nsIP.Hostname}
+			nameServers[nsIP.Hostname] = ns
+		}
+		ns.IPs = append(ns.IPs, nsIP.IPs...)
+	}
+
+	// grab all the ips for the fqdn for each name server
+	type nameServerRecord struct {
+		NSHostname string
+		NSAddress  string
+		Host       string
+		Records    []string
+		Error      error
+	}
+	chanNSRec := make(chan nameServerRecord)
+	count = 0
+	for _, v := range nameServers {
+		count += len(v.IPs)
+	}
+	wg.Add(count)
+	go func() {
+		wg.Wait()
+		close(chanNSRec)
+	}()
+
+	lookupDNSClient := func(host, server string) (*dns.Msg, error) {
+		dnsClient := new(dns.Client)
+		dnsClient.Timeout = 10 * time.Second
+		dnsClient.Dialer = &net.Dialer{Timeout: dnsClient.Timeout}
+		m := new(dns.Msg)
+		m.SetQuestion(host, dns.TypeTXT)
+		m.RecursionDesired = true
+		r, _, err := dnsClient.Exchange(m, net.JoinHostPort(server, "53"))
+		return r, err
+	}
+
+	// async function to look up a txt record using a given nameserver
+	lookupTXTAsync := func(host, nsAddress, nsHostname string) {
+		nsr := nameServerRecord{
+			NSHostname: nsHostname,
+			NSAddress:  nsAddress,
+			Host:       host,
+		}
+
+		r, err := lookupDNSClient(host, nsAddress)
+		if err != nil {
+			nsr.Error = err
+			chanNSRec <- nsr
+			wg.Done()
+			return
+		}
+		if r.Rcode != dns.RcodeSuccess {
+			nsr.Error = fmt.Errorf("Invalid rcode: %s", dns.RcodeToString[r.Rcode])
+			chanNSRec <- nsr
+			wg.Done()
+			return
+		}
+		for _, ans := range r.Answer {
+			switch v := ans.(type) {
+			case *dns.TXT:
+				nsr.Records = append(nsr.Records, v.Txt...)
+			case *dns.CNAME:
+				// TODO: add support for following CNAME records?
+				nsr.Error = fmt.Errorf("You are currently using an CNAME record on %q -> %q. This service does not support recursive CNAME queries.",
+					host, v.Target)
+			default:
+				nsr.Error = fmt.Errorf("Invalid rrtype: %s", dns.TypeToString[v.Header().Rrtype])
+			}
+		}
+		chanNSRec <- nsr
+		wg.Done()
+	}
+
+	fqdnHost := "_acme-challenge." + domain + "."
+	for _, ns := range nameServers {
+		for _, ip := range ns.IPs {
+			go lookupTXTAsync(fqdnHost, ip, ns.Hostname)
+		}
+	}
+
+	for nsRec := range chanNSRec {
+		if nsRec.Error != nil {
+			return []Problem{
+				debugProblem("NSOutOfSync",
+					"Error querying name server record for text record", nsRec.Error.Error()),
+			}, nil
+		}
+		ns := nameServers[nsRec.NSHostname]
+		if ns == nil {
+			return []Problem{
+				debugProblem("NSOutOfSync",
+					"Unknown nameserver hostname returned", nsRec.NSHostname),
+			}, nil
+		}
+		if ns.Records == nil {
+			ns.Records = map[string][]string{}
+		}
+		if _, ok := ns.Records[nsRec.NSAddress]; ok {
+			return []Problem{
+				debugProblem("NSOutOfSync",
+					"Duplicate IP returned for nameserver", nsRec.NSHostname),
+			}, nil
+		}
+		ns.Records[nsRec.NSAddress] = append(ns.Records[nsRec.NSAddress], nsRec.Records...)
+	}
+
+	// check the returned records
+	var lastNameServer *nameServer
+	var nameServerList []string
+	actuallyHasRecords := false
+	for _, ns := range nameServers {
+		nameServerList = append(nameServerList, fmt.Sprintf("%s (%s)", ns.Hostname, strings.Join(ns.IPs, ",")))
+
+		if lastNameServer == nil {
+			lastNameServer = ns
+			continue
+		}
+
+		var lastIP string
+		var lastRecords []string
+		for ip, recs := range ns.Records {
+			if lastIP == "" {
+				goto fauxContinue
+			}
+
+			if !actuallyHasRecords && len(recs) > 0 {
+				actuallyHasRecords = true
+			}
+
+			if !sliceContainsSameValues(lastRecords, recs) {
+				return []Problem{
+					{
+						Name:        "NSOutOfSync",
+						Explanation: "Name servers have different TXT records",
+						Detail: fmt.Sprintf("Name server %s (records: %s) has different records to %s (records: %s)",
+							lastIP, strings.Join(lastRecords, ", "), ip, strings.Join(recs, ", ")),
+						Severity: SeverityWarning,
+					},
+				}, nil
+			}
+
+		fauxContinue:
+			lastIP = ip
+			lastRecords = recs
+		}
+	}
+
+	if !actuallyHasRecords {
+		return []Problem{
+			debugProblem("NSOutOfSync", "No TXT records for _acme-challenge",
+				fmt.Sprintf("No listed nameservers on the domain %q have any TXT records for the _acme-challenge subdomain."+
+					"\nThis is not necessarily a problem as it could mean the acme client you are using to issue certificates is cleaning up after challenges, but may be worth noting if you are unable to issue certificates."+
+					"\nNameserver list:\n - %s",
+					domain, strings.Join(nameServerList, "\n - "))),
+		}, nil
+	}
+
+	return nil, nil
+}
+
+// This is not efficient and mutates the slices
+// TODO: use something better for this comparison
+func sliceContainsSameValues(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 {
+		return true
+	}
+
+	sort.Strings(a)
+	sort.Strings(b)
+
+	for i, v := range a {
+		if b[i] != v {
+			return false
+		}
+	}
+
+	return true
 }
