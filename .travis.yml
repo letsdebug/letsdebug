@@ -9,7 +9,7 @@ before_install:
 install:
   - make deps
 script:
-  - make letsdebug-server letsdebug-cli
+  - make generate letsdebug-server letsdebug-cli
 deploy:
   provider: releases
   api_key:
