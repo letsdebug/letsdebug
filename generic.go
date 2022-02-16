@@ -135,6 +135,8 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 				issue = append(issue, caaRr)
 			case "issuewild":
 				issuewild = append(issuewild, caaRr)
+			case "iodef":
+				break
 			default:
 				if caaRr.Flag == 1 {
 					criticalUnknown = append(criticalUnknown, caaRr)
