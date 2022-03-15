@@ -311,7 +311,7 @@ func (s *server) listenForTests(dsn string) error {
 
 func (s *server) vacuumTests() {
 	for {
-		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status NOT IN ('Cancelled','Complete') AND created_at < now() - interval '30 minutes';`); err != nil {
+		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status IN ('Queued','Processing') AND created_at < now() - interval '30 minutes';`); err != nil {
 			log.Printf("Failed to vacuum: %v", err)
 		}
 		time.Sleep(10 * time.Second)

@@ -1,3 +1,4 @@
+-- Warning: update server.vacuumTests() if changing this enum.
 CREATE TYPE test_status AS ENUM ('Queued', 'Processing', 'Complete', 'Cancelled');
 
 CREATE TABLE tests (
