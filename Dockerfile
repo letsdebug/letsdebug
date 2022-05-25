@@ -1,4 +1,4 @@
-FROM golang:1.17.7-buster
+FROM golang:1.18.2-buster
 
 RUN apt-get update && apt-get -y install libunbound-dev && apt-get -y clean
 
