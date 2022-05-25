@@ -216,7 +216,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 
 	defer resp.Body.Close()
 
-	maxLen := 1024
+	maxLen := 8192
 	if l := len(scanCtx.httpExpectResponse) + 2; l > maxLen {
 		maxLen = l
 	}

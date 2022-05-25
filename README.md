@@ -34,6 +34,7 @@ PortForwarding | Checks whether the domain is serving a modem-router administrat
 | SanctionedDomain | Checks whether the Registered Domain is present on the [USG OFAC SDN List](https://sanctionssearch.ofac.treas.gov/). Updated daily. | [Example](https://letsdebug.net/unomasuno.com.mx/48081) |
 | BlockedByNginxTestCookie | Checks whether the HTTP-01 validation requests are being intercepted by [testcookie-nginx-module](https://github.com/kyprizel/testcookie-nginx-module). | [Example](https://letsdebug.net/13513427185.ifastnet.org/51860) |
 | HttpOnHttpsPort | Checks whether the server reported receiving an HTTP request on an HTTPS-only port | [Example](https://letsdebug.net/clep-energy.org/107591) |
+| BlockedByFirewall | Checks whether HTTP-01 validation requests are being blocked by Palo Alto firewall devices | [Example](https://letsdebug.net/neuroxy.langneurosci.org/1051062) |
 
 ## Web API Usage
 

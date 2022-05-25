@@ -197,6 +197,18 @@ func (c httpAccessibilityChecker) Check(ctx *scanContext, domain string, method 
 		})
 	}
 
+	if res := isLikelyPaloAltoFirewall(allCheckResults); !res.IsZero() {
+		probs = append(probs, Problem{
+			Name: "BlockedByFirewall",
+			Explanation: "The validation request to this domain was blocked by what is likely a " +
+				"Palto Alto web application firewall device. The 'acme-protocol' application needs " +
+				"to be permitted on the firewall in order for the request to succeed. See " +
+				"https://community.letsencrypt.org/t/177600 for more information.",
+			Detail:   fmt.Sprintf("The server at %s produced this result.", res.IP.String()),
+			Severity: SeverityError,
+		})
+	}
+
 	return probs, nil
 }
 
@@ -262,6 +274,16 @@ func isHTTP497(results []httpCheckResult) httpCheckResult {
 			if bytes.Contains(res.Content, needle) {
 				return res
 			}
+		}
+	}
+	return httpCheckResult{}
+}
+
+func isLikelyPaloAltoFirewall(results []httpCheckResult) httpCheckResult {
+	needle := []byte("acme-protocol")
+	for _, res := range results {
+		if bytes.Contains(res.Content, needle) {
+			return res
 		}
 	}
 	return httpCheckResult{}
