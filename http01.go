@@ -216,7 +216,7 @@ func noRecords(name, rrSummary string) Problem {
 	return Problem{
 		Name: "NoRecords",
 		Explanation: fmt.Sprintf(`No valid A or AAAA records could be ultimately resolved for %s. `+
-			`This means that Let's Encrypt would not be able to to connect to your domain to perform HTTP validation, since `+
+			`This means that Let's Encrypt would not be able to connect to your domain to perform HTTP validation, since `+
 			`it would not know where to connect to.`, name),
 		Detail:   rrSummary,
 		Severity: SeverityFatal,
