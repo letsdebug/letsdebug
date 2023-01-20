@@ -243,6 +243,10 @@ func (c cloudflareChecker) Check(ctx *scanContext, domain string, method Validat
 	cl := http.Client{
 		Timeout:   httpTimeout * time.Second,
 		Transport: makeSingleShotHTTPTransport(),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Disasble redirects
+			return http.ErrUseLastResponse
+		},
 	}
 	resp, err := cl.Get("https://" + domain)
 	if err == nil { // no tls error, cert must be issued
@@ -252,11 +256,6 @@ func (c cloudflareChecker) Check(ctx *scanContext, domain string, method Validat
 		}
 
 		return probs, nil
-	}
-
-	// disable redirects
-	cl.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
 	}
 
 	// attempt to connect over http with redirects disabled to check cloudflare header
