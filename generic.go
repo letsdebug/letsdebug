@@ -236,6 +236,10 @@ func invalidDomain(domain, reason string) Problem {
 type cloudflareChecker struct{}
 
 func (c cloudflareChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	if method == DNS01 {
+		return nil, errNotApplicable
+	}
+
 	var probs []Problem
 
 	domain = strings.TrimPrefix(domain, "*.")
