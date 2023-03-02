@@ -252,7 +252,7 @@ func (c cloudflareChecker) Check(ctx *scanContext, domain string, method Validat
 	if err == nil { // no tls error, cert must be issued
 		// check if it's cloudflare
 		if hasCloudflareHeader(resp.Header) {
-			probs = append(probs, cloudflareCDN(domain))
+			probs = append(probs, cloudflareCDN(domain, method))
 		}
 
 		return probs, nil
@@ -265,7 +265,7 @@ func (c cloudflareChecker) Check(ctx *scanContext, domain string, method Validat
 	}
 
 	if hasCloudflareHeader(resp.Header) {
-		probs = append(probs, cloudflareCDN(domain))
+		probs = append(probs, cloudflareCDN(domain, method))
 		probs = append(probs, cloudflareSslNotProvisioned(domain))
 	}
 
@@ -276,7 +276,17 @@ func hasCloudflareHeader(h http.Header) bool {
 	return strings.Contains(strings.ToLower(h.Get("server")), "cloudflare")
 }
 
-func cloudflareCDN(domain string) Problem {
+func cloudflareCDN(domain string, method ValidationMethod) Problem {
+	if method == TLSALPN01 {
+		return Problem{
+			Name: "CloudflareCDN",
+			Explanation: fmt.Sprintf(`The domain %s is being served through Cloudflare CDN, `+
+				`which supports the HTTP & HTTPS protocols only. It is impossible to obtain a `+
+				`certificate using the TLS-ALPN-01 challenge with the Cloudflare CDN proxy enabled.`, domain),
+			Severity: SeverityFatal,
+		}
+
+	}
 	return Problem{
 		Name: "CloudflareCDN",
 		Explanation: fmt.Sprintf(`The domain %s is being served through Cloudflare CDN. Any Let's Encrypt certificate installed on the `+
