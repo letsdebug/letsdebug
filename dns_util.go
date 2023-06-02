@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/miekg/unbound"
+	"golang.org/x/net/context"
 )
 
 var (
 	reservedNets []*net.IPNet
+	cfClient     *dns.Client
 )
 
 func lookup(name string, rrType uint16) ([]dns.RR, error) {
@@ -36,6 +39,42 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 	}
 
 	return result.Rr, nil
+}
+
+func lookupCloudflareEDE(name string, rrType uint16) (string, error) {
+	q := &dns.Msg{}
+	q.SetQuestion(name+".", rrType)
+	q.SetEdns0(4096, true)
+	q.RecursionDesired = true
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	r, _, err := cfClient.ExchangeContext(ctx, q, "1.1.1.1:53")
+	if err != nil {
+		return "", err
+	}
+
+	var ede *dns.EDNS0_EDE
+	opt := r.IsEdns0()
+	if opt == nil {
+		return "", nil
+	}
+	for _, opt := range opt.Option {
+		if asEDE, ok := opt.(*dns.EDNS0_EDE); ok {
+			ede = asEDE
+			break
+		}
+	}
+	if ede == nil {
+		return "", nil
+	}
+
+	if ede.ExtraText != "" {
+		return ede.ExtraText, nil
+	}
+
+	return "", nil
 }
 
 func normalizeFqdn(name string) string {
@@ -72,6 +111,9 @@ func init() {
 			panic(err)
 		}
 		reservedNets = append(reservedNets, n)
+	}
+	cfClient = &dns.Client{
+		SingleInflight: true,
 	}
 }
 
