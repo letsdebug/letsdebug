@@ -1,18 +1,12 @@
-.PHONY: clean all deps server-dev server-dev-db-up deploy docker-build-setup docker-build
+.PHONY: clean all server-dev server-dev-db-up deploy docker-build-setup docker-build
 
 clean:
-	rm -f letsdebug-server
-
-deps:
-	go get github.com/go-bindata/go-bindata/...
-
-generate:
-	go generate ./...
+	rm -f letsdebug-server letsdebug-cli
 
 test:
 	go test -v ./...
 
-server-dev: generate
+server-dev:
 	LETSDEBUG_WEB_DEBUG=1 \
 	LETSDEBUG_WEB_DB_DSN="user=letsdebug dbname=letsdebug password=password sslmode=disable" \
 	LETSDEBUG_DEBUG=1 go \

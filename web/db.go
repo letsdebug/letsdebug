@@ -3,6 +3,7 @@ package web
 import (
 	"database/sql"
 	"database/sql/driver"
+	"embed"
 	"fmt"
 	"log"
 	"sort"
@@ -15,10 +16,15 @@ import (
 
 	"errors"
 
-	"github.com/golang-migrate/migrate"
-	"github.com/golang-migrate/migrate/database/postgres"
-	bindata "github.com/golang-migrate/migrate/source/go_bindata"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/letsdebug/letsdebug"
+)
+
+var (
+	//go:embed db_migrations
+	resMigrations embed.FS
 )
 
 type problems []letsdebug.Problem
@@ -228,22 +234,17 @@ func (o *options) Scan(src interface{}) error {
 }
 
 func (s *server) migrateUp() error {
-	names, _ := AssetDir("db_migrations")
-	res := bindata.Resource(names, func(name string) ([]byte, error) {
-		return Asset("db_migrations/" + name)
-	})
-
-	src, err := bindata.WithInstance(res)
-	if err != nil {
-		return err
-	}
-
 	driver, err := postgres.WithInstance(s.db.DB, &postgres.Config{})
 	if err != nil {
 		return err
 	}
 
-	m, err := migrate.NewWithInstance("go-bindata", src, s.db.DriverName(), driver)
+	src, err := iofs.New(resMigrations, "db_migrations")
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithInstance("iofs", src, s.db.DriverName(), driver)
 	if err != nil {
 		return err
 	}

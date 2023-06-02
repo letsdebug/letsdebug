@@ -139,8 +139,7 @@ You can save time by [downloading tagged releases for 64-bit Linux](https://gith
 
     go get -u github.com/letsdebug/letsdebug/...
     cd $GOPATH/src/github.com/letsdebug/letsdebug
-    make deps
-    make letsdebug-cli letsdebug-server
+    make clean letsdebug-cli letsdebug-server
 
 
 ## Contributing

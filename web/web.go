@@ -3,6 +3,7 @@ package web
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -29,6 +30,9 @@ import (
 )
 
 var (
+	//go:embed templates
+	resTemplates embed.FS
+
 	regexDNSName = regexp.MustCompile(`^[\w\-.]+$`) // Very basic test, further validation later
 )
 
@@ -84,20 +88,27 @@ func Serve() error {
 	// Load templates
 	log.Printf("Loading templates ...")
 	s.templates = map[string]*template.Template{}
-	names, _ := AssetDir("templates/layouts")
-	includes, _ := AssetDir("templates/includes")
 
-	for _, tplName := range names {
-		tpl := template.New(tplName)
-		for _, incName := range includes {
-			if _, err := tpl.Parse(string(MustAsset("templates/includes/" + incName))); err != nil {
+	templateFiles, _ := resTemplates.ReadDir("templates/layouts")
+	includeFiles, _ := resTemplates.ReadDir("templates/includes")
+
+	for _, tplFile := range templateFiles {
+		name := tplFile.Name()
+		tpl := template.New(name)
+
+		for _, incFile := range includeFiles {
+			incData, _ := resTemplates.ReadFile("templates/includes/" + incFile.Name())
+			if _, err := tpl.Parse(string(incData)); err != nil {
 				return err
 			}
 		}
-		if _, err := tpl.Parse(string(MustAsset("templates/layouts/" + tplName))); err != nil {
+
+		tplData, _ := resTemplates.ReadFile("templates/layouts/" + name)
+		if _, err := tpl.Parse(string(tplData)); err != nil {
 			return err
 		}
-		s.templates[tplName] = tpl
+
+		s.templates[name] = tpl
 	}
 
 	// Routes
