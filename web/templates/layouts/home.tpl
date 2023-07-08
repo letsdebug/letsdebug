@@ -50,11 +50,11 @@ input, select {
     <p>Enter the domain and validation method you are having trouble issuing a certificate with. <small>(Choose HTTP-01 if unsure)</small>.</p>
     <form action="/" method="POST">
       <div class="fieldset">
-        <input type="text" autofocus tabindex="1" class="domain" name="domain" placeholder="example.org" required>
+        <input type="text" autofocus tabindex="1" class="domain" name="domain" placeholder="example.org" value="{{ .Domain }}" required>
         <select name="method" tabindex="2" class="validation-method">
-          <option value="http-01">HTTP-01</option>
-          <option value="dns-01">DNS-01</option>
-          <option value="tls-alpn-01">TLS-ALPN-01</option>
+          <option value="http-01" {{ if eq "http-01" .Method }} selected {{ end }} >HTTP-01</option>
+          <option value="dns-01" {{ if eq "dns-01" .Method }} selected {{ end }} >DNS-01</option>
+          <option value="tls-alpn-01" {{ if eq "tls-alpn-01" .Method }} selected {{ end }} >TLS-ALPN-01</option>
         </select>
       </div>
       <input class="submit" tabindex="3" type="submit" value="Run Test">

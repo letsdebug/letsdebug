@@ -419,8 +419,13 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
+	domain := r.URL.Query().Get("domain")
+	method := r.URL.Query().Get("method")
+
 	s.render(w, http.StatusOK, "home.tpl", map[string]interface{}{
 		"WorkerCount": template.HTML(fmt.Sprintf("<!-- Busy Workers: %d -->", atomic.LoadInt32(&s.busyWorkers))),
+		"Domain": domain,
+		"Method": method,
 	})
 }
 
