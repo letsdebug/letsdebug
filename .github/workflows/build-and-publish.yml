@@ -46,4 +46,4 @@ jobs:
           path: letsdebug-server
       - uses: softprops/action-gh-release@v1
         with:
-          files: letsdebug-server
+          files: letsdebug-server/letsdebug-server
