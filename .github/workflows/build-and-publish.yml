@@ -1,0 +1,49 @@
+name: Go package
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "stable"
+
+      - name: Install Unbound dependencies
+        run: sudo apt-get install -y libunbound-dev
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build server
+        run: go build -o letsdebug-server cmd/server/server.go
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: letsdebug-server
+          path: letsdebug-server
+  publish:
+    needs: build
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: letsdebug-server
+          path: letsdebug-server
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: letsdebug-server
