@@ -1,0 +1,25 @@
+name: Build and Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "stable"
+
+      - name: Install Unbound dependencies
+        run: sudo apt-get install -y libunbound-dev
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build server
+        run: go build -o letsdebug-server cmd/server/server.go
