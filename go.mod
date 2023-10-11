@@ -12,7 +12,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
 	github.com/weppos/publicsuffix-go v0.30.1
-	golang.org/x/net v0.16.0
+	golang.org/x/net v0.17.0
 )
 
 require (
