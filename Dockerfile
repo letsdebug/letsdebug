@@ -1,4 +1,4 @@
-FROM golang:1.20-buster
+FROM golang:bookworm
 
 RUN apt-get update && apt-get -y install libunbound-dev && apt-get -y clean
 
