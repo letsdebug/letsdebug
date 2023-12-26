@@ -120,7 +120,7 @@ This package relies on a fairly recent version of libunbound.
 
 * On Debian-based distributions:
 
-    `apt install libunbound2 libunbound-dev`
+    `apt install libunbound8 libunbound-dev`
 
 * On EL-based distributions, you may need to build from source because the packages are ancient on e.g. CentOS, but you can try:
 
