@@ -112,7 +112,9 @@ func init() {
 		}
 		reservedNets = append(reservedNets, n)
 	}
-	cfClient = &dns.Client{}
+	cfClient = &dns.Client{
+		SingleInflight: true,
+	}
 }
 
 func setUnboundConfig(ub *unbound.Unbound) error {
@@ -121,7 +123,6 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		Opt string
 		Val string
 	}{
-		{"edns-buffer-size:", "512"},
 		{"verbosity:", "0"},
 		{"use-syslog:", "no"},
 		{"do-ip4:", "yes"},
@@ -129,12 +130,8 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"do-udp:", "yes"},
 		{"do-tcp:", "yes"},
 		{"tcp-upstream:", "no"},
-		{"hide-identity:", "yes"},
-		{"hide-version:", "yes"},
 		{"harden-glue:", "yes"},
 		{"harden-dnssec-stripped:", "yes"},
-		{"harden-below-nxdomain:", "no"},
-		{"use-caps-for-id:", "yes"},
 		{"cache-min-ttl:", "0"},
 		{"cache-max-ttl:", "0"},
 		{"cache-max-negative-ttl:", "0"},
@@ -143,11 +140,11 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"unwanted-reply-threshold:", "10000"},
 		{"do-not-query-localhost:", "yes"},
 		{"val-clean-additional:", "yes"},
+		{"harden-algo-downgrade:", "yes"},
+		{"edns-buffer-size:", "512"},
 		{"val-sig-skew-min:", "0"},
 		{"val-sig-skew-max:", "0"},
-		{"ede:", "yes"},
-		{"qname-minimisation:", "no"},
-		{"qname-minimisation-strict:", "no"},
+		{"target-fetch-policy:", "0 0 0 0 0"},
 	}
 
 	for _, opt := range opts {
