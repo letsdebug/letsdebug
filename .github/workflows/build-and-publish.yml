@@ -30,11 +30,14 @@ jobs:
       - name: Build server
         run: go build -o letsdebug-server cmd/server/server.go
 
+      - name: Build cli
+        run: go build -o letsdebug-cli cmd/cli/cli.go
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: letsdebug-server
-          path: letsdebug-server
+          name: letsdebug-binaries
+          path: letsdebug-*
   publish:
     needs: build
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
@@ -42,8 +45,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: letsdebug-server
-          path: letsdebug-server
+          name: letsdebug-binaries
+          path: letsdebug-binaries
       - uses: softprops/action-gh-release@v1
         with:
-          files: letsdebug-server/letsdebug-server
+          files: |
+            letsdebug-binaries/letsdebug-server
+            letsdebug-binaries/letsdebug-cli

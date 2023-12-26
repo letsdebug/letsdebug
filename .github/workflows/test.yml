@@ -23,3 +23,6 @@ jobs:
 
       - name: Build server
         run: go build -o letsdebug-server cmd/server/server.go
+
+      - name: Build cli
+        run: go build -o letsdebug-cli cmd/cli/cli.go
