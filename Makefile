@@ -22,11 +22,11 @@ letsdebug-cli:
 	go build -o letsdebug-cli cmd/cli/cli.go
 
 docker-build-setup:
-	docker build --platform linux/amd64 -t letsdebug-build .
+	docker build --platform linux/arm64 -t letsdebug-build .
 
 docker-build:
-	docker run --platform linux/amd64 --rm -it -v $(PWD):/letsdebug letsdebug-build
+	docker run --platform linux/arm64 --rm -it -v $(PWD):/letsdebug letsdebug-build
 
 deploy: letsdebug-server
-	rsync -vhz --progress letsdebug-server root@letsdebug.net:/usr/local/bin/ && \
-	ssh root@letsdebug.net "systemctl restart letsdebug"
+	rsync -vhz --progress letsdebug-server root@server.letsdebug.net:/usr/local/bin/ && \
+	ssh root@server.letsdebug.net "systemctl restart letsdebug"
