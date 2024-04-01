@@ -47,7 +47,7 @@ jobs:
         with:
           name: letsdebug-binaries
           path: letsdebug-binaries
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
             letsdebug-binaries/letsdebug-server
