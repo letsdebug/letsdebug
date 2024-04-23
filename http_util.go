@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -222,7 +221,7 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 	}
 	r := io.LimitReader(resp.Body, int64(maxLen))
 
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	checkRes.Content = buf
 
 	// If we expect a certain response, check for it
@@ -236,6 +235,17 @@ func checkHTTP(scanCtx *scanContext, domain string, address net.IP) (httpCheckRe
 			return *checkRes, translateHTTPError(domain, address,
 				fmt.Errorf(`This test expected the server to respond with "%s" but instead we got a response beginning with "%s"`,
 					scanCtx.httpExpectResponse, respStr),
+				checkRes.DialStack)
+		}
+	} else {
+		if err == nil {
+			// By default, assume 404/2xx are ok. Warn on others.
+			if (checkRes.StatusCode > 299 || checkRes.StatusCode < 200) && checkRes.StatusCode != 404 {
+				return *checkRes, unexpectedHttpResponse(domain, resp.Status, string(checkRes.Content), checkRes.DialStack)
+			}
+		} else {
+			return *checkRes, translateHTTPError(domain, address,
+				fmt.Errorf(`we experienced an error reading the response: %v`, err),
 				checkRes.DialStack)
 		}
 	}
@@ -306,5 +316,14 @@ func badRedirect(domain string, err error, dialStack []string) Problem {
 			domain),
 		Detail:   fmt.Sprintf("%s\n\nTrace:\n%s", err.Error(), strings.Join(dialStack, "\n")),
 		Severity: SeverityError,
+	}
+}
+
+func unexpectedHttpResponse(domain string, httpStatus string, httpBody string, dialStack []string) Problem {
+	return Problem{
+		Name:        "UnexpectedHttpResponse",
+		Explanation: fmt.Sprintf(`Sending an ACME HTTP validation request to %s results in unexpected HTTP response %s. This indicates that the webserver is misconfigured or misbehaving.`, domain, httpStatus),
+		Detail:      fmt.Sprintf("%s\n\n%s\n\nTrace:\n%s", httpStatus, httpBody, strings.Join(dialStack, "\n")),
+		Severity:    SeverityWarning,
 	}
 }
