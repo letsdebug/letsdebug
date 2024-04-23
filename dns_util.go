@@ -21,7 +21,7 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 	defer ub.Destroy()
 
 	if err := setUnboundConfig(ub); err != nil {
-		return nil, fmt.Errorf("Failed to configure Unbound resolver: %v", err)
+		return nil, fmt.Errorf("failed to configure Unbound resolver: %v", err)
 	}
 
 	result, err := ub.Resolve(name, rrType, dns.ClassINET)
@@ -112,9 +112,7 @@ func init() {
 		}
 		reservedNets = append(reservedNets, n)
 	}
-	cfClient = &dns.Client{
-		SingleInflight: true,
-	}
+	cfClient = &dns.Client{}
 }
 
 func setUnboundConfig(ub *unbound.Unbound) error {
@@ -150,7 +148,7 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 	for _, opt := range opts {
 		// Can't ignore these because we cant silently have policies being ignored
 		if err := ub.SetOption(opt.Opt, opt.Val); err != nil {
-			return fmt.Errorf("Failed to configure unbound with option %s %v", opt.Opt, err)
+			return fmt.Errorf("failed to configure unbound with option %s %v", opt.Opt, err)
 		}
 	}
 
@@ -158,7 +156,7 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 	// https://www.nlnetlabs.nl/bugs-script/show_bug.cgi?id=4092
 	if err := ub.SetOption("use-caps-for-id:", "yes"); err != nil {
 		if err = ub.SetOption("use-caps-for-id", "yes"); err != nil {
-			return fmt.Errorf("Failed to configure unbound with use-caps-for-id: %v", err)
+			return fmt.Errorf("failed to configure unbound with use-caps-for-id: %v", err)
 		}
 	}
 
