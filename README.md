@@ -35,6 +35,7 @@ PortForwarding | Checks whether the domain is serving a modem-router administrat
 | BlockedByNginxTestCookie | Checks whether the HTTP-01 validation requests are being intercepted by [testcookie-nginx-module](https://github.com/kyprizel/testcookie-nginx-module). | [Example](https://letsdebug.net/13513427185.ifastnet.org/51860) |
 | HttpOnHttpsPort | Checks whether the server reported receiving an HTTP request on an HTTPS-only port | [Example](https://letsdebug.net/clep-energy.org/107591) |
 | BlockedByFirewall | Checks whether HTTP-01 validation requests are being blocked by Palo Alto firewall devices | [Example](https://letsdebug.net/neuroxy.langneurosci.org/1051062) |
+| UnexpectedHttpResponse | Checks whether HTTP-01 validation requests are being answered with unusual HTTP response codes | [Example](https://letsdebug.net/maintenance.germancoding.com/1898584) |
 
 ## Web API Usage
 
