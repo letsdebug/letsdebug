@@ -3,7 +3,7 @@ module github.com/letsdebug/letsdebug
 go 1.19
 
 require (
-	github.com/eggsampler/acme/v3 v3.5.0
+	github.com/eggsampler/acme/v3 v3.6.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/jmoiron/sqlx v1.4.0
