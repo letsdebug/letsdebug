@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/pem"
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
 	"net"
 	"os"
@@ -95,6 +96,38 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 	} else {
 		probs = append(probs, debugProblem("PublicSuffix", "The IANA public suffix is the TLD of the Registered Domain",
 			fmt.Sprintf("The TLD for %s is: %s", domain, r)))
+	}
+
+	return probs, nil
+}
+
+// domainExistsChecker ensures that the registered domain actually exists
+type domainExistsChecker struct{}
+
+func (c domainExistsChecker) Check(ctx *scanContext, domain string, method ValidationMethod) ([]Problem, error) {
+	var probs []Problem
+
+	domainName, err := psl.Parse(domain)
+	if err != nil {
+		probs = append(probs, invalidDomain(domain, "Cannot find registered domain via publix suffix list"))
+		return probs, nil
+	}
+
+	sld := domainName.SLD + "." + domainName.TLD
+
+	soa, err := lookupRaw(sld, dns.TypeSOA)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if soa == nil {
+		probs = append(probs, dnsLookupFailed(sld, "SOA", errors.New("no DNS response for SOA lookup")))
+		return probs, nil
+	}
+
+	if soa.NxDomain {
+		probs = append(probs, invalidDomain(sld, "Domain does not exist in DNS - have you registered this domain name?"))
 	}
 
 	return probs, nil

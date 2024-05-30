@@ -17,6 +17,15 @@ var (
 )
 
 func lookup(name string, rrType uint16) ([]dns.RR, error) {
+	result, err := lookupRaw(name, rrType)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Rr, nil
+}
+
+func lookupRaw(name string, rrType uint16) (*unbound.Result, error) {
 	ub := unbound.New()
 	defer ub.Destroy()
 
@@ -38,7 +47,7 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 			name, dns.TypeToString[rrType], dns.RcodeToString[result.Rcode])
 	}
 
-	return result.Rr, nil
+	return result, nil
 }
 
 func lookupCloudflareEDE(name string, rrType uint16) (string, error) {

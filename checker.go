@@ -40,6 +40,7 @@ func init() {
 		},
 
 		asyncCheckerBlock{
+			domainExistsChecker{},    // depends on valid*Checker
 			caaChecker{},             // depends on valid*Checker
 			&rateLimitChecker{},      // depends on valid*Checker
 			dnsAChecker{},            // depends on valid*Checker
@@ -77,7 +78,7 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 		go func(task checker, ctx *scanContext, domain string, method ValidationMethod) {
 			defer func() {
 				if r := recover(); r != nil {
-					resultCh <- asyncResult{nil, fmt.Errorf("Check %T paniced: %v", task, r)}
+					resultCh <- asyncResult{nil, fmt.Errorf("check %T paniced: %v", task, r)}
 				}
 			}()
 			t := reflect.TypeOf(task)
@@ -93,7 +94,7 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 
 	for i := 0; i < len(c); i++ {
 		result := <-resultCh
-		if result.Error != nil && result.Error != errNotApplicable {
+		if result.Error != nil && !errors.Is(result.Error, errNotApplicable) {
 			debug("[%s] Exiting async via error\n", id)
 			return nil, result.Error
 		}
