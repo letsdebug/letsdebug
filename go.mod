@@ -11,7 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.59
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
-	github.com/weppos/publicsuffix-go v0.30.2
+	github.com/weppos/publicsuffix-go v0.40.0
 	golang.org/x/net v0.25.0
 )
 
