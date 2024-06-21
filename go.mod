@@ -12,7 +12,7 @@ require (
 	github.com/miekg/dns v1.1.59
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
 	github.com/weppos/publicsuffix-go v0.40.0
-	golang.org/x/net v0.25.0
+	golang.org/x/net v0.26.0
 )
 
 require (
@@ -20,9 +20,10 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
-	golang.org/x/tools v0.19.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
