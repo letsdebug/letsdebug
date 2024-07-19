@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"reflect"
 	"time"
 )
@@ -21,6 +23,21 @@ var (
 	validMethods     = map[ValidationMethod]bool{HTTP01: true, DNS01: true, TLSALPN01: true}
 	errNotApplicable = errors.New("Checker not applicable for this domain and method")
 	checkers         []checker
+
+	problemsPerChecker = promauto.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "letsdebug",
+			Name:      "checker_problems_summary",
+			Help:      "Problems found by each checker",
+		},
+		[]string{"checker", "method"})
+	durationPerChecker = promauto.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "letsdebug",
+			Name:      "checker_duration_summary",
+			Help:      "Run durations of each checker",
+		},
+		[]string{"checker", "method"})
 )
 
 func init() {
@@ -85,7 +102,11 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 			debug("[%s] async: + %v\n", id, t)
 			start := time.Now()
 			probs, err := task.Check(ctx, domain, method)
-			debug("[%s] async: - %v in %v\n", id, t, time.Since(start))
+			duration := time.Since(start)
+			labels := prometheus.Labels{"checker": t.String(), "method": string(method)}
+			problemsPerChecker.With(labels).Observe(float64(len(probs)))
+			durationPerChecker.With(labels).Observe(duration.Seconds())
+			debug("[%s] async: - %v in %v\n", id, t, duration)
 			resultCh <- asyncResult{probs, err}
 		}(task, ctx, domain, method)
 	}

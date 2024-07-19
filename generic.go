@@ -7,6 +7,8 @@ import (
 	"encoding/pem"
 	"encoding/xml"
 	"errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"io/ioutil"
 	"net"
 	"os"
@@ -607,6 +609,16 @@ func rateLimited(domain, detail string) Problem {
 	}
 }
 
+var (
+	stagingFailures = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "letsdebug",
+			Name:      "staging_tests_failed_total",
+			Help:      "The total number of Let's Encrypt staging submissions encountering internal errors",
+		},
+		[]string{"method"})
+)
+
 // acmeStagingChecker tries to create an authorization on
 // Let's Encrypt's staging server and parse the error urn
 // to see if there's anything interesting reported.
@@ -663,6 +675,7 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 	if c.account.PrivateKey == nil {
 		if err := c.buildAcmeClient(); err != nil {
 			c.clientMu.Unlock()
+			stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
 			return []Problem{
 				internalProblem(fmt.Sprintf("Couldn't setup Let's Encrypt staging checker, skipping: %v", err), SeverityWarning),
 			}, nil
@@ -674,7 +687,9 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 	order, err := c.client.NewOrder(c.account, []acme.Identifier{{Type: "dns", Value: domain}})
 	if err != nil {
-		if p := translateAcmeError(domain, err); p.Name != "" {
+		// Always record order creation failures in metrics
+		stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
+		if p, _ := translateAcmeError(domain, err); p.Name != "" {
 			probs = append(probs, p)
 		}
 		probs = append(probs, debugProblem("LetsEncryptStaging", "Order creation error", err.Error()))
@@ -689,6 +704,7 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 		probsMu.Lock()
 		defer probsMu.Unlock()
 
+		stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
 		probs = append(probs, internalProblem("An unknown problem occurred while performing a test "+
 			"authorization against the Let's Encrypt staging service: "+err.Error(), SeverityWarning))
 	}
@@ -713,7 +729,10 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 			if _, err := c.client.UpdateChallenge(c.account, chal); err != nil {
 				probsMu.Lock()
-				if p := translateAcmeError(domain, err); p.Name != "" {
+				if p, stagingBroken := translateAcmeError(domain, err); p.Name != "" {
+					if stagingBroken {
+						stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
+					}
 					probs = append(probs, p)
 				}
 				authzFailures = append(authzFailures, err.Error())
@@ -735,34 +754,35 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 	return probs, nil
 }
 
-func translateAcmeError(domain string, err error) Problem {
-	if acmeErr, ok := err.(acme.Problem); ok {
+func translateAcmeError(domain string, err error) (problem Problem, stagingBroken bool) {
+	var acmeErr acme.Problem
+	if errors.As(err, &acmeErr) {
 		urn := strings.TrimPrefix(acmeErr.Type, "urn:ietf:params:acme:error:")
 		switch urn {
 		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa", "dns", "connection":
 			// Boulder can send error:dns when _acme-challenge is NXDOMAIN, which is
 			// equivalent to unauthorized
 			if strings.Contains(acmeErr.Detail, "NXDOMAIN looking up TXT") {
-				return Problem{}
+				return Problem{}, false
 			}
-			return letsencryptProblem(domain, acmeErr.Detail, SeverityError)
+			return letsencryptProblem(domain, acmeErr.Detail, SeverityError), false
 		// When something bad is happening on staging
 		case "serverInternal":
 			return letsencryptProblem(domain,
-				fmt.Sprintf(`There may be internal issues on the staging service: %v`, acmeErr.Detail), SeverityWarning)
+				fmt.Sprintf(`There may be internal issues on the staging service: %v`, acmeErr.Detail), SeverityWarning), true
 		// Unauthorized is what we expect, except for these exceptions that we should handle:
 		// - When VA OR RA is checking Google Safe Browsing (groan)
 		case "unauthorized":
 			if strings.Contains(acmeErr.Detail, "considered an unsafe domain") {
-				return letsencryptProblem(domain, acmeErr.Detail, SeverityError)
+				return letsencryptProblem(domain, acmeErr.Detail, SeverityError), false
 			}
-			return Problem{}
+			return Problem{}, false
 		default:
-			return Problem{}
+			return Problem{}, false
 		}
 	}
 	return internalProblem(fmt.Sprintf("An unknown issue occurred when performing a test authorization "+
-		"against the Let's Encrypt staging service: %v", err), SeverityWarning)
+		"against the Let's Encrypt staging service: %v", err), SeverityWarning), true
 }
 
 func letsencryptProblem(domain, detail string, severity SeverityLevel) Problem {

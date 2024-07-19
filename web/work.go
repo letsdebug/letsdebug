@@ -13,14 +13,16 @@ import (
 var (
 	testsRun = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "letsdebug_tests_run_total",
-			Help: "The total number of processed tests",
+			Namespace: "letsdebug",
+			Name:      "tests_run_total",
+			Help:      "The total number of processed tests",
 		},
 		[]string{"method"})
 	testsFailed = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "letsdebug_tests_failed_total",
-			Help: "The total number of tests encountering internal errors",
+			Namespace: "letsdebug",
+			Name:      "tests_failed_total",
+			Help:      "The total number of tests encountering internal errors",
 		},
 		[]string{"method"})
 )
