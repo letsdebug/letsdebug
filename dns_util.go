@@ -39,11 +39,17 @@ func lookupRaw(name string, rrType uint16) (*unbound.Result, error) {
 	}
 
 	if result.Bogus {
-		return nil, fmt.Errorf("DNS response for %s had fatal DNSSEC issues: %v", name, result.WhyBogus)
+		err = fmt.Errorf("DNS response for %s had fatal DNSSEC issues: %v", name, result.WhyBogus)
+		if edeText, _ := lookupCloudflareEDE(name, rrType); edeText != "" {
+			err = fmt.Errorf(
+				"%s. Additionally, Cloudflare's 1.1.1.1 resolver reported: %s",
+				err.Error(), edeText)
+		}
+		return result, err
 	}
 
 	if result.Rcode == dns.RcodeServerFailure || result.Rcode == dns.RcodeRefused {
-		return nil, fmt.Errorf("DNS response for %s/%s did not have an acceptable response code: %s",
+		return result, fmt.Errorf("DNS response for %s/%s did not have an acceptable response code: %s",
 			name, dns.TypeToString[rrType], dns.RcodeToString[result.Rcode])
 	}
 

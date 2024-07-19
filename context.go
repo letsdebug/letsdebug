@@ -44,13 +44,6 @@ func (sc *scanContext) Lookup(name string, rrType uint16) ([]dns.RR, error) {
 	}
 
 	resolved, err := lookup(name, rrType)
-	if err != nil {
-		if edeText, _ := lookupCloudflareEDE(name, rrType); edeText != "" {
-			err = fmt.Errorf(
-				"%s. Additionally, Cloudflare's 1.1.1.1 resolver reported: %s",
-				err.Error(), edeText)
-		}
-	}
 
 	sc.rrsMutex.Lock()
 	rrMap[rrType] = lookupResult{
