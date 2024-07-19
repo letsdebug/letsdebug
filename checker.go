@@ -99,6 +99,9 @@ func (c asyncCheckerBlock) Check(ctx *scanContext, domain string, method Validat
 				}
 			}()
 			t := reflect.TypeOf(task)
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
 			debug("[%s] async: + %v\n", id, t)
 			start := time.Now()
 			probs, err := task.Check(ctx, domain, method)
