@@ -687,9 +687,10 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 	order, err := c.client.NewOrder(c.account, []acme.Identifier{{Type: "dns", Value: domain}})
 	if err != nil {
-		// Always record order creation failures in metrics
-		stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
-		if p, _ := translateAcmeError(domain, err); p.Name != "" {
+		if p, stagingBroken := translateAcmeError(domain, err); p.Name != "" {
+			if stagingBroken {
+				stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
+			}
 			probs = append(probs, p)
 		}
 		probs = append(probs, debugProblem("LetsEncryptStaging", "Order creation error", err.Error()))
