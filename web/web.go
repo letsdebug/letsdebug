@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"html/template"
 	"log"
 	"net"
@@ -131,6 +132,7 @@ func Serve() error {
 	s.rateLimitByIP = map[string]*ratelimit.Bucket{}
 
 	go func() {
+		http.Handle("/metrics", promhttp.Handler())
 		if err := http.ListenAndServe(envOrDefault("PPROF_LISTEN_ADDR", "127.0.0.1:9151"), nil); err != nil {
 			log.Printf("pprof bind failed: %v", err)
 		}
@@ -424,8 +426,8 @@ func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
 
 	s.render(w, http.StatusOK, "home.tpl", map[string]interface{}{
 		"WorkerCount": template.HTML(fmt.Sprintf("<!-- Busy Workers: %d -->", atomic.LoadInt32(&s.busyWorkers))),
-		"Domain": domain,
-		"Method": method,
+		"Domain":      domain,
+		"Method":      method,
 	})
 }
 
