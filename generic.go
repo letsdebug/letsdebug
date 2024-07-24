@@ -9,7 +9,6 @@ import (
 	"errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"io/ioutil"
 	"net"
 	"os"
 	"sort"
@@ -628,20 +627,25 @@ type acmeStagingChecker struct {
 	clientMu sync.Mutex
 }
 
+func ConfigureAcmeClient() acme.OptionFunc {
+	return func(client *acme.Client) error {
+		// Give the ACME CA more time to complete challenges
+		client.PollTimeout = time.Minute * 3
+		return nil
+	}
+}
+
 func (c *acmeStagingChecker) buildAcmeClient() error {
-	cl, err := acme.NewClient("https://acme-staging-v02.api.letsencrypt.org/directory")
+	cl, err := acme.NewClient("https://acme-staging-v02.api.letsencrypt.org/directory", ConfigureAcmeClient())
 	if err != nil {
 		return err
 	}
-
-	// Give the ACME CA more time to complete challenges
-	cl.PollTimeout = 100 * time.Second
 
 	regrPath := os.Getenv("LETSDEBUG_ACMESTAGING_ACCOUNTFILE")
 	if regrPath == "" {
 		regrPath = "acme-account.json"
 	}
-	buf, err := ioutil.ReadFile(regrPath)
+	buf, err := os.ReadFile(regrPath)
 	if err != nil {
 		return err
 	}

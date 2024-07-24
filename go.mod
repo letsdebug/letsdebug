@@ -11,6 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.61
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
+	github.com/prometheus/client_golang v1.19.1
 	github.com/weppos/publicsuffix-go v0.40.0
 	golang.org/x/net v0.26.0
 )
@@ -20,8 +21,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/prometheus/client_golang v1.19.1 // indirect
+	github.com/kr/text v0.1.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
@@ -32,5 +32,4 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
