@@ -313,7 +313,10 @@ func (s *server) listenForTests(dsn string) error {
 func (s *server) vacuumTests() {
 	for {
 		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status IN ('Queued','Processing') AND created_at < now() - interval '30 minutes';`); err != nil {
-			log.Printf("Failed to vacuum: %v", err)
+			log.Printf("Failed to vacuum stuck tests: %v", err)
+		}
+		if _, err := s.db.Exec(`DELETE FROM tests WHERE created_at < now() - interval '7 days';`); err != nil {
+			log.Printf("Failed to vacuum old tests: %v", err)
 		}
 		time.Sleep(10 * time.Second)
 	}

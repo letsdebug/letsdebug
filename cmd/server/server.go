@@ -1,9 +1,8 @@
 package main
 
 import (
-	"log"
-
 	"github.com/letsdebug/letsdebug/web"
+	"log"
 )
 
 // type debugRequest struct {
