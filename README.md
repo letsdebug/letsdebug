@@ -8,6 +8,7 @@ Let's Debug is a diagnostic website, API, CLI and Go package for quickly and acc
 It is motivated by [this community thread](https://community.letsencrypt.org/t/creating-a-webservice-for-analysis-of-common-problems/45836).
 
 ## Status
+
 Currently [deployed to letsdebug.net and regularly in use](https://letsdebug.net).
 
 ## Problems Detected
@@ -46,8 +47,12 @@ There is a JSON-based API available as part of the web frontend.
 ```bash
 $ curl --data '{"method":"http-01","domain":"example.com"}' -H 'content-type: application/json' https://letsdebug.net
 ```
-```javascript
-{"Domain":"example.com","ID":674477}
+
+```json
+{
+  "Domain": "example.com",
+  "ID": 674477
+}
 ```
 
 ### Submitting a test with custom options
@@ -58,18 +63,29 @@ curl --data '{"method":"http-01","domain":"example.com","options":{"http_request
 
 Available options are as follows:
 
-| Option | Description |
--------|-------------|
-`http_request_path` | What path within `/.well-known/acme-challenge/` to use instead of `letsdebug-test` (default) for the HTTP check. Max length 255. |
-`http_expect_response` | What exact response to expect from each server during the HTTP check. By default, no particular response is expected. If present and the response does not match, the test will fail with an Error severity. It is highly recommended to always use a completely random value. Max length 255. |
+| Option                 | Description                                                                                                                                                                                                                                                                                    |
+------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+ `http_request_path`    | What path within `/.well-known/acme-challenge/` to use instead of `letsdebug-test` (default) for the HTTP check. Max length 255.                                                                                                                                                               |
+ `http_expect_response` | What exact response to expect from each server during the HTTP check. By default, no particular response is expected. If present and the response does not match, the test will fail with an Error severity. It is highly recommended to always use a completely random value. Max length 255. |
 
 ### Viewing tests
 
 ```bash
 $ curl -H 'accept: application/json' https://letsdebug.net/example.com/674477
 ```
-```javascript
-{"id":674477,"domain":"example.com","method":"http-01","status":"Complete","created_at":"2021-09-08T04:02:26.416259Z","started_at":"2021-09-08T04:02:26.419336Z","completed_at":"2021-09-08T04:02:30.529766Z","result":{}}
+
+```json
+{
+  "id": 674477,
+  "domain": "example.com",
+  "method": "http-01",
+  "status": "Complete",
+  "created_at": "2021-09-08T04:02:26.416259Z",
+  "started_at": "2021-09-08T04:02:26.419336Z",
+  "completed_at": "2021-09-08T04:02:30.529766Z",
+  "result": {
+  }
+}
 ```
 
 or to view all recent tests
@@ -83,7 +99,8 @@ $ curl -H 'accept: application/json' https://letsdebug.net/example.com
 ```bash
 $ curl "https://letsdebug.net/certwatch-query?q=<urlencoded SQL query>"
 ```
-```javascript
+
+```json
 {
   "query": "select c.id as crtsh_id, x509_subjectName(c.CERTIFICATE), x509_notAfter(c.CERTIFICATE) from certificate c where x509_notAfter(c.CERTIFICATE) = '2018-06-01 16:25:44' AND x509_issuerName(c.CERTIFICATE) LIKE 'C=US, O=Let''s Encrypt%';",
   "results": [
@@ -91,7 +108,7 @@ $ curl "https://letsdebug.net/certwatch-query?q=<urlencoded SQL query>"
       "crtsh_id": 346300797,
       "x509_notafter": "2018-06-01T16:25:44Z",
       "x509_subjectname": "CN=hivdatingzimbabwe.com"
-    },
+    }
     /* ... */
   ]
 }
@@ -99,8 +116,7 @@ $ curl "https://letsdebug.net/certwatch-query?q=<urlencoded SQL query>"
 
 ## CLI Usage
 
-You can download binaries for tagged releases for Linux for both the CLi and the server [from the releases page](https://github.com/letsdebug/letsdebug/releases). 
-
+You can download binaries for tagged releases for Linux for both the CLi and the server [from the releases page](https://github.com/letsdebug/letsdebug/releases).
 
     letsdebug-cli -domain example.org -method http-01 -debug
 
@@ -121,19 +137,20 @@ This package relies on a fairly recent version of libunbound.
 
 * On Debian-based distributions:
 
-    `apt install libunbound8 libunbound-dev`
+  `apt install libunbound8 libunbound-dev`
 
 * On EL-based distributions, you may need to build from source because the packages are ancient on e.g. CentOS, but you can try:
 
-    `yum install unbound-libs unbound-devel`
+  `yum install unbound-libs unbound-devel`
 
 * On OSX, [Homebrew](https://brew.sh/) contains the latest version of unbound:
 
-    `brew install unbound`
+  `brew install unbound`
 
 You will also need Go's [dep](https://github.com/golang/dep) dependency manager.
 
 ### Releases
+
 You can save time by [downloading tagged releases for 64-bit Linux](https://github.com/letsdebug/letsdebug/releases). Keep in mind you will still need to have libunbound present on your system.
 
 ### Building
@@ -142,8 +159,8 @@ You can save time by [downloading tagged releases for 64-bit Linux](https://gith
     cd $GOPATH/src/github.com/letsdebug/letsdebug
     make clean letsdebug-cli letsdebug-server
 
-
 ## Contributing
+
 Any contributions containing JavaScript will be discarded, but other feedback, bug reports, suggestions and enhancements are welcome - please open an issue first.
 
 ## LICENSE
