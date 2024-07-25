@@ -270,7 +270,7 @@ func (s *server) httpViewTestResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if test == nil {
-		doError("No such result exists.", http.StatusNotFound)
+		doError("No such test exists. Old tests are deleted after 7 days.", http.StatusNotFound)
 		return
 	}
 
