@@ -9,8 +9,11 @@ import (
 	"errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/net/idna"
+	"golang.org/x/text/unicode/norm"
 	"net"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -57,6 +60,8 @@ func notValidMethod(method ValidationMethod) Problem {
 	}
 }
 
+var dnsLabelCharacterRegexp = regexp.MustCompile("^[a-z0-9-]+$")
+
 // validDomainChecker ensures that the FQDN is well-formed and is part of a public suffix.
 type validDomainChecker struct{}
 
@@ -64,6 +69,11 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 	var probs []Problem
 
 	domain = strings.TrimPrefix(domain, "*.")
+
+	if len(domain) == 0 {
+		probs = append(probs, invalidDomain(domain, fmt.Sprintf("Domain is empty")))
+		return probs, nil
+	}
 
 	for _, ch := range []byte(domain) {
 		if !(('a' <= ch && ch <= 'z') ||
@@ -75,7 +85,7 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 		}
 	}
 
-	if len(domain) > 230 {
+	if len(domain) > 253 {
 		probs = append(probs, invalidDomain(domain, "Domain too long"))
 		return probs, nil
 	}
@@ -83,6 +93,59 @@ func (c validDomainChecker) Check(ctx *scanContext, domain string, method Valida
 	if ip := net.ParseIP(domain); ip != nil {
 		probs = append(probs, invalidDomain(domain, "Domain is an IP address"))
 		return probs, nil
+	}
+
+	if strings.HasSuffix(domain, ".") {
+		probs = append(probs, invalidDomain(domain, "Domain must not end in a dot"))
+		return probs, nil
+	}
+
+	labels := strings.Split(domain, ".")
+	if len(labels) > 10 {
+		probs = append(probs, invalidDomain(domain, "Domain has too many dot"))
+		return probs, nil
+	}
+	if len(labels) < 2 {
+		probs = append(probs, invalidDomain(domain, "Domain needs at least one dot"))
+		return probs, nil
+	}
+
+	for _, label := range labels {
+		if len(label) < 1 {
+			probs = append(probs, invalidDomain(domain, "Domain can not have two dots in a row"))
+			return probs, nil
+		}
+		if len(label) > 63 {
+			probs = append(probs, invalidDomain(domain, "Domain has a label (component between dots) longer than 63 bytes"))
+			return probs, nil
+		}
+
+		if !dnsLabelCharacterRegexp.MatchString(label) {
+			probs = append(probs, invalidDomain(domain, "Domain contains an invalid character"))
+			return probs, nil
+		}
+
+		if label[0] == '-' || label[len(label)-1] == '-' {
+			probs = append(probs, invalidDomain(domain, "Domain contains an invalid label in a reserved format (R-LDH: '??--')"))
+			return probs, nil
+		}
+
+		if len(label) >= 4 && label[2:4] == "--" {
+			if label[0:2] != "xn" {
+				probs = append(probs, invalidDomain(domain, "Domain contains an invalid label in a reserved format (R-LDH: '??--')"))
+				return probs, nil
+			}
+
+			ulabel, err := idna.ToUnicode(label)
+			if err != nil {
+				probs = append(probs, invalidDomain(domain, "Domain contains malformed punycode"))
+				return probs, nil
+			}
+			if !norm.NFC.IsNormalString(ulabel) {
+				probs = append(probs, invalidDomain(domain, "Domain contains malformed punycode"))
+				return probs, nil
+			}
+		}
 	}
 
 	rule := psl.DefaultList.Find(domain, &psl.FindOptions{IgnorePrivate: true, DefaultRule: nil})
