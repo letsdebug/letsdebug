@@ -282,6 +282,9 @@ func (s *server) listenForTests(dsn string) error {
 			log.Fatal(err)
 		}
 	}
+	defer func() {
+		log.Fatalln("listenForTests exited abnormally")
+	}()
 
 	listener := pq.NewListener(dsn, 10*time.Second, time.Minute, problemFunc)
 	if err := listener.Listen("tests_events"); err != nil {

@@ -41,6 +41,9 @@ func (s *server) runWorkers(numWorkers int) {
 }
 
 func (s *server) work() {
+	defer func() {
+		log.Fatalln("worker exited abnormally")
+	}()
 	for req := range s.workCh {
 		log.Printf("Received notification: %+v", req)
 		atomic.AddInt32(&s.busyWorkers, 1)
