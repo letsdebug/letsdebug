@@ -59,7 +59,7 @@ func lookupRaw(name string, rrType uint16) (*unbound.Result, error) {
 	}
 
 	if result.Rcode == dns.RcodeServerFailure || result.Rcode == dns.RcodeRefused {
-		println("unbound servfail/refused result: %+v", &result)
+		fmt.Printf("unbound servfail/refused result: %+v\n", result)
 		return result, fmt.Errorf("DNS response for %s/%s did not have an acceptable response code: %s",
 			name, dns.TypeToString[rrType], dns.RcodeToString[result.Rcode])
 	}
