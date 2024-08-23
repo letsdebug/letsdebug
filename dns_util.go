@@ -156,10 +156,9 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"do-not-query-localhost:", "yes"},
 		{"val-clean-additional:", "yes"},
 		{"harden-algo-downgrade:", "yes"},
-		{"edns-buffer-size:", "512"},
+		{"edns-buffer-size:", "1232"},
 		{"val-sig-skew-min:", "0"},
 		{"val-sig-skew-max:", "0"},
-		{"target-fetch-policy:", "0 0 0 0 0"},
 	}
 
 	for _, opt := range opts {
