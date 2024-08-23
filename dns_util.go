@@ -2,8 +2,10 @@ package letsdebug
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -14,6 +16,8 @@ import (
 var (
 	reservedNets []*net.IPNet
 	cfClient     *dns.Client
+	ub           *unbound.Unbound
+	ub_mutex     sync.Mutex
 )
 
 func lookup(name string, rrType uint16) ([]dns.RR, error) {
@@ -26,11 +30,16 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 }
 
 func lookupRaw(name string, rrType uint16) (*unbound.Result, error) {
-	ub := unbound.New()
-	defer ub.Destroy()
+	ub_mutex.Lock()
+	defer ub_mutex.Unlock()
 
-	if err := setUnboundConfig(ub); err != nil {
-		return nil, fmt.Errorf("failed to configure Unbound resolver: %v", err)
+	if ub == nil {
+		ub = unbound.New()
+
+		if err := setUnboundConfig(ub); err != nil {
+			log.Fatalf("failed to configure Unbound resolver: %v", err)
+			return nil, nil
+		}
 	}
 
 	result, err := ub.Resolve(name, rrType, dns.ClassINET)
