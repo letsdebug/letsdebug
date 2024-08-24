@@ -5,6 +5,8 @@ import (
 	"database/sql/driver"
 	"embed"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"log"
 	"sort"
 	"strings"
@@ -25,6 +27,15 @@ import (
 var (
 	//go:embed db_migrations
 	resMigrations embed.FS
+)
+
+var (
+	testsCancelled = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "letsdebug",
+			Name:      "tests_cancelled_total",
+			Help:      "The total number of cancelled tests",
+		})
 )
 
 type problems []letsdebug.Problem
@@ -315,7 +326,16 @@ func (s *server) listenForTests(dsn string) error {
 
 func (s *server) vacuumTests() {
 	for {
-		if _, err := s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status IN ('Queued','Processing') AND created_at < now() - interval '30 minutes';`); err != nil {
+		var res sql.Result
+		var err error
+		if res, err = s.db.Exec(`UPDATE tests set status = 'Cancelled' WHERE status IN ('Queued','Processing') AND created_at < now() - interval '30 minutes';`); err == nil {
+			rows, err := res.RowsAffected()
+			if err == nil {
+				testsCancelled.Add(float64(rows))
+			} else {
+				log.Printf("Can't retrieve affected rows: %v", err)
+			}
+		} else {
 			log.Printf("Failed to vacuum stuck tests: %v", err)
 		}
 		if _, err := s.db.Exec(`DELETE FROM tests WHERE created_at < now() - interval '7 days';`); err != nil {
