@@ -158,7 +158,7 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"harden-glue:", "yes"},
 		{"harden-dnssec-stripped:", "yes"},
 		{"cache-min-ttl:", "0"},
-		{"cache-max-ttl:", "0"},
+		{"cache-max-ttl:", "60"},
 		{"cache-max-negative-ttl:", "0"},
 		{"neg-cache-size:", "0"},
 		{"prefetch:", "no"},
