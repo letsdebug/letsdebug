@@ -41,9 +41,8 @@ func lookup(name string, rrType uint16) ([]dns.RR, error) {
 }
 
 func lookupRaw(name string, rrType uint16) (*unbound.Result, error) {
-	ub := getUnbound()
 
-	result, err := ub.Resolve(name, rrType, dns.ClassINET)
+	result, err := lookupWithTimeout(name, rrType, 60*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +64,28 @@ func lookupRaw(name string, rrType uint16) (*unbound.Result, error) {
 	}
 
 	return result, nil
+}
+
+func lookupWithTimeout(name string, rrType uint16, timeout time.Duration) (*unbound.Result, error) {
+	type unboundWrapper struct {
+		result *unbound.Result
+		err    error
+	}
+
+	ub := getUnbound()
+	resultChan := make(chan unboundWrapper, 1)
+
+	go func() {
+		result, err := ub.Resolve(name, rrType, dns.ClassINET)
+		resultChan <- unboundWrapper{result, err}
+	}()
+
+	select {
+	case res := <-resultChan:
+		return res.result, res.err
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("DNS response for %s/%s could not be resolved within the timeout. This may indicate slow or unresponsive nameservers", name, dns.TypeToString[rrType])
+	}
 }
 
 func lookupCloudflareEDE(name string, rrType uint16) (string, error) {
@@ -169,6 +190,9 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		{"edns-buffer-size:", "1232"},
 		{"val-sig-skew-min:", "0"},
 		{"val-sig-skew-max:", "0"},
+		{"so-reuseport:", "yes"},
+		{"qname-minimisation:", "no"},
+		{"qname-minimisation-strict:", "no"},
 	}
 
 	for _, opt := range opts {
