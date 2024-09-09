@@ -764,6 +764,12 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 		return probs, nil
 	}
 
+	// A real ACME client would now set up some challenges (by placing files, configuring webservers, talking to DNS).
+	// This takes a short while. However, we can technically query the ACME server right away. But, that may cause races
+	// within Let's Encrypts code, because our subsequent requests could end up hitting a replica which hasn't synced the
+	// new authz URLs yet. So, wait a moment to simulate a real ACME client doing work.
+	time.Sleep(3 * time.Second)
+
 	var wg sync.WaitGroup
 	wg.Add(len(order.Authorizations))
 	var probsMu sync.Mutex
