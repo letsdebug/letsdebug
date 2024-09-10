@@ -182,13 +182,9 @@ func (c domainExistsChecker) Check(ctx *scanContext, domain string, method Valid
 	soa, err := lookupRaw(sld, dns.TypeSOA)
 
 	if err != nil {
-		if soa != nil {
-			probs = append(probs, dnsLookupFailed(sld, "SOA", errors.Join(
-				errors.New("domain existence could not be verified due to misbehaving nameserver"), err)))
-			return probs, nil
-		} else {
-			return nil, err
-		}
+		probs = append(probs, dnsLookupFailed(sld, "SOA", errors.Join(
+			errors.New("domain existence could not be verified due to misbehaving nameserver"), err)))
+		return probs, nil
 	}
 
 	if soa == nil {
