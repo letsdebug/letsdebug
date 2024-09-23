@@ -11,7 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.62
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
-	github.com/prometheus/client_golang v1.20.2
+	github.com/prometheus/client_golang v1.20.4
 	github.com/weppos/publicsuffix-go v0.40.2
 	golang.org/x/net v0.28.0
 	golang.org/x/text v0.17.0
