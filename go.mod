@@ -1,6 +1,8 @@
 module github.com/letsdebug/letsdebug
 
-go 1.19
+go 1.22.0
+
+toolchain go1.23.1
 
 require (
 	github.com/eggsampler/acme/v3 v3.6.1
