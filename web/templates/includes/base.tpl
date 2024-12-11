@@ -62,7 +62,8 @@
       and
       <a href="https://tools.letsdebug.net/cert-revoke" target="_blank" rel="noopener noreferrer">certificate revocation.</a>
     </p>
-    <p>Let's Encrypt™ is a trademark of the Internet Security Research Group. </p>
+    <p>Let's Encrypt™ is a trademark of the Internet Security Research Group (ISRG).</p>
+    <p>Let's Debug is not affiliated with, or sponsored or endorsed by, ISRG.</p>
   </footer>
 </body>
 </html>
