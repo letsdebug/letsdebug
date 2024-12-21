@@ -15,7 +15,7 @@ require (
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
 	github.com/prometheus/client_golang v1.20.5
 	github.com/weppos/publicsuffix-go v0.40.2
-	golang.org/x/net v0.31.0
+	golang.org/x/net v0.33.0
 	golang.org/x/text v0.21.0
 )
 
@@ -32,7 +32,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/tools v0.24.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )
