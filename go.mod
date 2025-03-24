@@ -11,7 +11,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/juju/ratelimit v1.0.2
 	github.com/lib/pq v1.10.9
-	github.com/miekg/dns v1.1.63
+	github.com/miekg/dns v1.1.64
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
 	github.com/prometheus/client_golang v1.20.5
 	github.com/weppos/publicsuffix-go v0.40.2
@@ -30,9 +30,9 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/mod v0.21.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/tools v0.24.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )
