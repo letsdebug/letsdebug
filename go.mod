@@ -1,6 +1,6 @@
 module github.com/letsdebug/letsdebug
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.1
 
@@ -15,8 +15,8 @@ require (
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
 	github.com/prometheus/client_golang v1.23.0
 	github.com/weppos/publicsuffix-go v0.40.2
-	golang.org/x/net v0.43.0
-	golang.org/x/text v0.28.0
+	golang.org/x/net v0.44.0
+	golang.org/x/text v0.30.0
 )
 
 require (
@@ -29,9 +29,9 @@ require (
 	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/tools v0.37.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
