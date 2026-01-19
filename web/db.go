@@ -5,12 +5,13 @@ import (
 	"database/sql/driver"
 	"embed"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"log"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/lib/pq"
 
@@ -79,6 +80,7 @@ func (probs problems) Less(i, j int) bool {
 type resultView struct {
 	Error    string   `json:"error,omitempty"`
 	Problems problems `json:"problems,omitempty"`
+	IsOk     bool     `json:"ok"`
 }
 
 func (rv *resultView) Scan(src interface{}) error {
