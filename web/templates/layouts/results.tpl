@@ -32,6 +32,10 @@
   color: #eee;
   background: rgb(0, 77, 0);
 }
+.problem-Info, .problem-Info a, .problem-Info a:visited {
+    background: lightgray;
+    color: black;
+}
 .problem-Debug, .problem-Debug a, .problem-Debug a:visited {
   background: lightskyblue;
   color: black;
@@ -115,7 +119,8 @@
     <p>Unfortunately something went wrong when running the test.</p>
     <div class="error">{{ .Test.Result.Error }}</div>
   </section>
-  {{ else if not .Test.Result.Problems }}
+  {{ else }}
+  {{ if .Test.Result.IsOk }}
   <section class="results">
     <div class="problem problem-OK">
       <div class="problem-header">
@@ -130,7 +135,8 @@
       </div>
     </div>
   </section>
-  {{ else }}
+  {{ end }}
+  {{ if gt (len .Test.Result.Problems) 0 }}
   <section class="results">
     {{ range $index, $problem := .Test.Result.Problems }}
     <div class="problem problem-{{ $problem.Severity }}" id="{{ $problem.Name }}-{{ $problem.Severity }}">
@@ -145,6 +151,7 @@
     </div>
     {{ end }}
   </section>
+  {{ end }}
   {{ end }}
   <section class="description">
     <p class="times">Submitted <abbr title="{{ .Test.CreatedTimestamp }}">{{ .Test.SubmitTime }}</abbr>.

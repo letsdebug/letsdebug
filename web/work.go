@@ -2,10 +2,11 @@ package web
 
 import (
 	"encoding/json"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"log"
 	"sync/atomic"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/letsdebug/letsdebug"
 )
@@ -56,8 +57,20 @@ func (s *server) work() {
 			HTTPExpectResponse: req.Options.HTTPExpectResponse,
 			HTTPRequestPath:    req.Options.HTTPRequestPath,
 		})
+		isOk := false
+		if err == nil {
+			isOk = true
+			for _, p := range res {
+				if p.Severity != letsdebug.SeverityInfo && p.Severity != letsdebug.SeverityDebug {
+					isOk = false
+					break
+				}
+			}
+		} else {
+			isOk = false
+		}
 		testsRun.With(prometheus.Labels{"method": string(method)}).Inc()
-		result := resultView{Problems: res}
+		result := resultView{Problems: res, IsOk: isOk}
 		if err != nil {
 			testsFailed.With(prometheus.Labels{"method": string(method)}).Inc()
 			result.Error = err.Error()

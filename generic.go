@@ -7,16 +7,17 @@ import (
 	"encoding/pem"
 	"encoding/xml"
 	"errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"golang.org/x/net/idna"
-	"golang.org/x/text/unicode/norm"
 	"net"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/net/idna"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/eggsampler/acme/v3"
 
@@ -462,7 +463,7 @@ func statusioNotOperational(status string, updated time.Time) Problem {
 		Explanation: fmt.Sprintf(`The current status as reported by the Let's Encrypt status page is %s as at %v. `+
 			`Depending on the reported problem, this may affect certificate issuance. For more information, please visit the status page.`, status, updated),
 		Detail:   "https://letsencrypt.status.io/",
-		Severity: SeverityWarning,
+		Severity: SeverityInfo,
 	}
 }
 
@@ -787,12 +788,20 @@ func (c *acmeStagingChecker) Check(ctx *scanContext, domain string, method Valid
 
 			authz, err := c.client.FetchAuthorization(c.account, authzURL)
 			if err != nil {
-				unhandledError(err)
+				if p, stagingBroken := translateAcmeError(domain, err); p.Name != "" {
+					if stagingBroken {
+						stagingFailures.With(prometheus.Labels{"method": string(method)}).Inc()
+					}
+					probs = append(probs, p)
+				} else {
+					unhandledError(err)
+				}
 				return
 			}
 
 			chal, ok := authz.ChallengeMap[string(method)]
 			if !ok {
+				// TODO: we sometimes run into this if an authorization is reused
 				unhandledError(fmt.Errorf("Missing challenge method (want %v): %v", method, authz.ChallengeMap))
 				return
 			}
@@ -830,6 +839,9 @@ func translateAcmeError(domain string, err error) (problem Problem, stagingBroke
 		urn := strings.TrimPrefix(acmeErr.Type, "urn:ietf:params:acme:error:")
 		switch urn {
 		case "rejectedIdentifier", "unknownHost", "rateLimited", "caa", "dns", "connection":
+			if strings.Contains(acmeErr.Detail, "Service busy; retry later") {
+				return infoProblem("ServiceBusy", "The Let's Encrypt staging service refused our request for a test dry-run. The test outputs may not be accurate. Please retry the test at a later time.", "Let's Encrypt Staging Sever busy."), true
+			}
 			// Boulder can send error:dns when _acme-challenge is NXDOMAIN, which is
 			// equivalent to unauthorized
 			if strings.Contains(acmeErr.Detail, "NXDOMAIN looking up TXT") {

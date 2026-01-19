@@ -19,6 +19,7 @@ type Problem struct {
 }
 
 const (
+	SeverityInfo    SeverityLevel = "Info"  // Represents informational messages which are not necessarily a problem.
 	SeverityFatal   SeverityLevel = "Fatal" // Represents a fatal error which will stop any further checks
 	SeverityError   SeverityLevel = "Error"
 	SeverityWarning SeverityLevel = "Warning"
@@ -71,5 +72,14 @@ func debugProblem(name, message, detail string) Problem {
 		Explanation: message,
 		Detail:      detail,
 		Severity:    SeverityDebug,
+	}
+}
+
+func infoProblem(name, message, detail string) Problem {
+	return Problem{
+		Name:        name,
+		Explanation: message,
+		Detail:      detail,
+		Severity:    SeverityInfo,
 	}
 }

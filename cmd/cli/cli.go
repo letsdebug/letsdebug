@@ -25,7 +25,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(probs) == 0 {
+	errorProbs := []letsdebug.Problem{}
+	for _, p := range probs {
+		if p.Severity != letsdebug.SeverityInfo && p.Severity != letsdebug.SeverityDebug {
+			errorProbs = append(errorProbs, p)
+		}
+	}
+
+	if len(errorProbs) == 0 {
 		fmt.Println("All OK!")
 		return
 	}
