@@ -11,7 +11,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/juju/ratelimit v1.0.2
 	github.com/lib/pq v1.10.9
-	github.com/miekg/dns v1.1.68
+	github.com/miekg/dns v1.1.72
 	github.com/miekg/unbound v0.0.0-20210309082708-dbeefb4cdb29
 	github.com/prometheus/client_golang v1.23.2
 	github.com/weppos/publicsuffix-go v0.50.2
