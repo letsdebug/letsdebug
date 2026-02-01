@@ -34,7 +34,7 @@ jobs:
         run: go build -o letsdebug-cli cmd/cli/cli.go
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: letsdebug-binaries
           path: letsdebug-*
