@@ -6,7 +6,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"html/template"
 	"log"
 	"net"
@@ -16,8 +15,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -45,6 +47,7 @@ type server struct {
 
 	rateLimitByIP     map[string]*ratelimit.Bucket
 	rateLimitByDomain map[string]*ratelimit.Bucket
+	rateLimitLock     sync.Mutex
 
 	rateLimitCertwatch *ratelimit.Bucket
 }
@@ -371,28 +374,9 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enforce rate limits here.
-	// - Per IP: 1 test per 10s, capacity 3
-	ipLimit, ok := s.rateLimitByIP[ip]
-	if !ok {
-		ipLimit = ratelimit.NewBucket(
-			time.Duration(envOrDefaultInt("RATELIMIT_IP_REGEN_SECS", 3))*time.Second,
-			int64(envOrDefaultInt("RATELIMIT_IP_CAPACITY", 3)))
-		s.rateLimitByIP[ip] = ipLimit
-	}
-	if _, takeOk := ipLimit.TakeMaxDuration(1, time.Second); !takeOk {
-		doError(fmt.Sprintf("Too many tests from %s recently, try again soon.", ip), http.StatusTooManyRequests)
-		return
-	}
-	// - Per domain: 3 tests per minute, capacity 3.
-	domainLimit, ok := s.rateLimitByDomain[domain]
-	if !ok {
-		domainLimit = ratelimit.NewBucket(
-			time.Duration(envOrDefaultInt("RATELIMIT_DOMAIN_REGEN_SECS", 20))*time.Second,
-			int64(envOrDefaultInt("RATELIMIT_DOMAIN_CAPACITY", 3)))
-		s.rateLimitByDomain[domain] = domainLimit
-	}
-	if _, takeOk := domainLimit.TakeMaxDuration(1, time.Second); !takeOk {
-		doError(fmt.Sprintf("Too many tests for %s recently, try again soon.", domain), http.StatusTooManyRequests)
+	if err, code := s.checkRateLimits(ip, domain); err != nil {
+		log.Printf("Rate limit hit for %s/%s: %v", ip, domain, err)
+		doError(err.Error(), code)
 		return
 	}
 
@@ -418,6 +402,35 @@ func (s *server) httpSubmitTest(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(testResponse); err != nil {
 		log.Printf("Error encoding submit test response: %v", err)
 	}
+}
+
+func (s *server) checkRateLimits(ip, domain string) (error, int) {
+	s.rateLimitLock.Lock()
+	defer s.rateLimitLock.Unlock()
+
+	// - Per IP: 1 test per 10s, capacity 3
+	ipLimit, ok := s.rateLimitByIP[ip]
+	if !ok {
+		ipLimit = ratelimit.NewBucket(
+			time.Duration(envOrDefaultInt("RATELIMIT_IP_REGEN_SECS", 3))*time.Second,
+			int64(envOrDefaultInt("RATELIMIT_IP_CAPACITY", 3)))
+		s.rateLimitByIP[ip] = ipLimit
+	}
+	if _, takeOk := ipLimit.TakeMaxDuration(1, time.Second); !takeOk {
+		return fmt.Errorf("too many tests from %s recently, try again soon", ip), http.StatusTooManyRequests
+	}
+	// - Per domain: 3 tests per minute, capacity 3.
+	domainLimit, ok := s.rateLimitByDomain[domain]
+	if !ok {
+		domainLimit = ratelimit.NewBucket(
+			time.Duration(envOrDefaultInt("RATELIMIT_DOMAIN_REGEN_SECS", 20))*time.Second,
+			int64(envOrDefaultInt("RATELIMIT_DOMAIN_CAPACITY", 3)))
+		s.rateLimitByDomain[domain] = domainLimit
+	}
+	if _, takeOk := domainLimit.TakeMaxDuration(1, time.Second); !takeOk {
+		return fmt.Errorf("too many tests for %s recently, try again soon", domain), http.StatusTooManyRequests
+	}
+	return nil, 0
 }
 
 func (s *server) httpHome(w http.ResponseWriter, r *http.Request) {
