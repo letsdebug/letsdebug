@@ -262,13 +262,41 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 			records = issuewild
 		}
 
+		var allowsLetsEncrypt = false
+		var allowsMethod = false
+		var requiresAccountUri = false
 		for _, r := range records {
-			if extractIssuerDomain(r.Value) == "letsencrypt.org" {
-				return probs, nil
+			var properties, err = parseCaaRecordProperties(r.Value)
+			if err != nil {
+				probs = append(probs, caaPossiblyInvalid(domain, wildcard, err))
+			} else {
+				if properties.name != "letsencrypt.org" {
+					continue
+				}
+				allowsLetsEncrypt = true
+				if properties.accountUri != "" {
+					requiresAccountUri = true
+				}
+				if len(properties.validationMethods) > 0 {
+					for _, m := range properties.validationMethods {
+						if m == string(method) {
+							allowsMethod = true
+						}
+					}
+				} else {
+					allowsMethod = true
+				}
 			}
 		}
 
-		probs = append(probs, caaIssuanceNotAllowed(domain, wildcard, records))
+		if !allowsLetsEncrypt || !allowsMethod {
+			probs = append(probs, caaIssuanceNotAllowed(domain, wildcard, records))
+		}
+
+		if requiresAccountUri {
+			probs = append(probs, caaRequiresAccountUri(domain, wildcard, records))
+		}
+
 		return probs, nil
 	}
 
@@ -288,10 +316,44 @@ func (c caaChecker) Check(ctx *scanContext, domain string, method ValidationMeth
 	return probs, nil
 }
 
-func extractIssuerDomain(value string) string {
-	// record can be:
-	// issuedomain.tld; someparams
-	return strings.Trim(strings.SplitN(value, ";", 2)[0], " \t")
+type CaaRecordProperties struct {
+	name              string
+	accountUri        string
+	validationMethods []string
+}
+
+func parseCaaRecordProperties(value string) (CaaRecordProperties, error) {
+	var parts = strings.Split(value, ";")
+	var caName = strings.Trim(parts[0], " \t")
+	var accountUri = ""
+	var validationMethods []string
+	if len(parts) > 1 {
+		for _, part := range parts[1:] {
+			var part = strings.Trim(part, " \t")
+			if len(part) == 0 {
+				continue
+			}
+			var keyAndValue = strings.SplitN(part, "=", 2)
+			if len(keyAndValue) != 2 {
+				return CaaRecordProperties{}, fmt.Errorf("invalid CAA record property: %s", part)
+			}
+			var key, value = strings.Trim(keyAndValue[0], " \t"), strings.Trim(keyAndValue[1], " \t")
+			switch key {
+			case "accounturi":
+				if accountUri != "" {
+					return CaaRecordProperties{}, fmt.Errorf("multiple accounturi properties found in CAA record")
+				}
+				accountUri = value
+			case "validationmethods":
+				validationMethods = append(validationMethods, strings.Split(value, ",")...)
+			}
+		}
+	}
+	return CaaRecordProperties{
+		name:              caName,
+		accountUri:        accountUri,
+		validationMethods: validationMethods,
+	}, nil
 }
 
 func collateRecords(records []*dns.CAA) string {
@@ -323,6 +385,27 @@ func caaIssuanceNotAllowed(domain string, wildcard bool, records []*dns.CAA) Pro
 	}
 }
 
+func caaPossiblyInvalid(domain string, wildcard bool, problem error) Problem {
+	return Problem{
+		Name:        "CAAPossiblyInvalid",
+		Explanation: fmt.Sprintf(`A CAA record on %s (wildcard=%t) is likely invalid. Please check your CAA records for any syntax errors.`, domain, wildcard),
+		Detail:      fmt.Sprintf("Problematic CAA record %s", problem),
+		Severity:    SeverityWarning,
+	}
+}
+
+func caaRequiresAccountUri(domain string, wildcard bool, records []*dns.CAA) Problem {
+	return Problem{
+		Name: "CAARequiresAccountUri",
+		Explanation: fmt.Sprintf(`A CAA record on %s (wildcard=%t) binds issuance to a specific ACME account. `+
+			`Please verify whether this ACME account is the intended one. `+
+			`Note that you need to allow at least one production and staging ACME account to use Let's Encrypt staging and production.' `+
+			`A list of the relevant CAA records are provided in the details.`, domain, wildcard),
+		Detail:   collateRecords(records),
+		Severity: SeverityInfo,
+	}
+}
+
 func invalidDomain(domain, reason string) Problem {
 	return Problem{
 		Name:        "InvalidDomain",
@@ -341,7 +424,6 @@ func (c cloudflareChecker) Check(ctx *scanContext, domain string, method Validat
 	}
 
 	var probs []Problem
-
 	domain = strings.TrimPrefix(domain, "*.")
 
 	cl := http.Client{
