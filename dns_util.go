@@ -168,9 +168,10 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		Opt string
 		Val string
 	}{
-		{"verbosity:", "1"},
+		{"verbosity:", "3"},
 		{"log-servfail:", "yes"},
 		{"use-syslog:", "no"},
+		{"logfile:", "/dev/stdout"},
 		{"do-ip4:", "yes"},
 		{"do-ip6:", "yes"},
 		{"do-udp:", "yes"},
