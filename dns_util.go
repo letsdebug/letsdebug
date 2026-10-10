@@ -210,7 +210,19 @@ func setUnboundConfig(ub *unbound.Unbound) error {
 		}
 	}
 
-	return ub.AddTa(`.                       1428    IN      DNSKEY  257 3 8 AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTOiW1vkIbzxeF3 +/4RgWOq7HrxRixHlFlExOLAJr5emLvN7SWXgnLh4+B5xQlNVz8Og8kv ArMtNROxVQuCaSnIDdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF 0jLHwVN8efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7pr+e oZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLYA4/ilBmSVIzuDWfd RUfhHdY6+cn8HFRm+2hM8AnXGXws9555KrUB5qihylGa8subX2Nn6UwN R1AkUTV74bU=
-.                       1428    IN      DNSKEY  256 3 8 AwEAAdSiy6sslYrcZSGcuMEK4DtE8DZZY1A08kAsviAD49tocYO5m37A vIOyzeiKBWuPuJ4m9u5HonCM/ntxklZKYFyMftv8XoRwbiXdpSjfdpNH iMYTTV2oDUNMjdLFnF6HYSY48xrPbevQOYbAFGHpxqcXAQT0+BaBiAx3 Ls6lXBQ3/hSVOprvDWJCQiI2OT+9+saKLddSIX6DwTVy0S5T4YY4EGg5 R3c/eKUb2/8XgKWUzlOIZsVAZZUSTKW0tX54ccAALO7Grvsx/NW62jc1 xv6wWAXocOEVgB7+4Lzb7q9p5o30+sYoGpOsKgFvMSy4oCZTQMQx2Sjd /NG2bMMw6nM=
-.                       1428    IN      RRSIG   DNSKEY 8 0 172800 20240910000000 20240820000000 20326 . cnf+5CdVZorlsu872+Q5X6mDWQlof//t+AlVDG21XH07xGy6X5imUIRa Jf3XKqJ95fJC0GmyvI0XxjJpSEmNphaO5BK7zjlNMoDv2Y3ppfWHc7xh T1sOoqy1StVgfkNULSrrEsnZmUOCPEomJJ5H4iBMfzOlrbpRABMeA2TV HeJO8Q/SOFy4dqHxX3S+4nd/GVc0gR+QOejczqzJ6k5GDgpP3zpb9Sa6 UZs6bJ/fvaj1Yisb3cren6t6OwdsWbIj6qlfCGcUienTvjaNsq8IySUg YOiw0w+HUw9vHfKVe96SjXwTaBcomOmXPjrIEW4Dq0j1iUAVxWMkPure eGdpsg==`)
+	// Root zone trust anchors, from https://data.iana.org/root-anchors/root-anchors.xml
+	// libunbound parses a single RR per AddTa call, so each anchor is added separately.
+	rootAnchors := []string{
+		// KSK-2017
+		". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D",
+		// KSK-2024
+		". IN DS 38696 8 2 683D2D0ACB8C9B712A1948B27F741219298D0A450D612C483AF444A4C0FB2B16",
+	}
+	for _, ta := range rootAnchors {
+		if err := ub.AddTa(ta); err != nil {
+			return fmt.Errorf("failed to add root trust anchor %q: %v", ta, err)
+		}
+	}
+
+	return nil
 }
